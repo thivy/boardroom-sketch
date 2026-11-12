@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "shadcn": {
+      "source": "shadcn/ui",
+      "sourceType": "github",
+      "skillPath": "skills/shadcn/SKILL.md",
+      "computedHash": "7859e9a064940a1a0010c992b63e4633c4f5f39ed367a23c16f24029816b1703"
+    },
+    "tanstack-ai": {
+      "source": "TanStack/ai",
+      "sourceType": "github",
+      "skillPath": "skills/tanstack-ai/SKILL.md",
+      "computedHash": "ae5833375e48f07b2a1eeb9b57f6d57a5ec9d1fc8e2d091f7c4808bdbb48301f"
+    },
+    "tanstack-ai-migration": {
+      "source": "TanStack/ai",
+      "sourceType": "github",
+      "skillPath": "skills/tanstack-ai-migration/SKILL.md",
+      "computedHash": "a79d2c5b19208ede359f12a5d3311d7811cdd4afed739e7aa539a2466fe6f774"
+    }
+  }
+}

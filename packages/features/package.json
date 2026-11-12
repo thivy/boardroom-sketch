@@ -1,0 +1,21 @@
+{
+  "name": "@app/features",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./app-header": "./src/app-header/index.ts",
+    "./app-shell": "./src/app-shell/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@app/components": "workspace:*",
+    "lucide-react": "^1.62.0"
+  },
+  "peerDependencies": {
+    "react": "^19",
+    "react-dom": "^19"
+  }
+}
