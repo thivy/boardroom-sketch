@@ -27,12 +27,12 @@ jobs:
           - name: macOS
             os: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
 
       # The sidecar is a copy of this Node, and the server uses node:sqlite (22.13+).
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
 
@@ -65,7 +65,7 @@ jobs:
         run: bun run desktop:build
 
       - name: Upload installers
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: boardroom-sketch-${{ matrix.name }}
           if-no-files-found: error
@@ -85,18 +85,18 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: installers
           merge-multiple: true
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Names without spaces, and latest.json: the file the installed app checks for a newer version.
       - name: Write the updater manifest
         run: node .github/scripts/updater-manifest.mjs installers "${{ github.ref_name }}" "${{ github.repository }}"
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: |
             installers/**/*
