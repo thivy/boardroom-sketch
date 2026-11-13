@@ -85,12 +85,12 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v7
+
       - uses: actions/download-artifact@v8
         with:
           path: installers
           merge-multiple: true
-
-      - uses: actions/checkout@v7
 
       # Names without spaces, and latest.json: the file the installed app checks for a newer version.
       - name: Write the updater manifest
