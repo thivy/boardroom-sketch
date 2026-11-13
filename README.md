@@ -61,6 +61,19 @@ bun run desktop:build   # produces an installer under apps/desktop/src-tauri/tar
 
 Dev runs the production server build, so run `desktop:dev` again after changing web code; use `bun run dev` for hot reload in a browser.
 
+### Download a build from GitHub
+
+The `Desktop app` workflow (`.github/workflows/desktop.yml`) builds the installers for Windows (`.msi`, `.exe`), macOS (`.dmg`) and Linux (`.deb`, `.rpm`, `.AppImage`).
+
+- **Any commit:** Actions → _Desktop app_ → _Run workflow_, then download the installers from the run's **Artifacts** (kept for 30 days).
+- **A release:** push a version tag and the installers are attached to a GitHub Release with generated notes:
+
+  ```bash
+  git tag v0.1.0 && git push origin v0.1.0
+  ```
+
+The builds are not code-signed, so Windows SmartScreen and macOS Gatekeeper warn on first run. The installer version comes from `apps/desktop/src-tauri/tauri.conf.json`, not the tag.
+
 ## Run without cloning
 
 ```bash
