@@ -5,6 +5,7 @@ A [Bun](https://bun.sh) workspaces monorepo: a thin [TanStack Start](https://tan
 ```
 apps/web             TanStack Start app: root route and page routes. Nothing else.
 packages/features    One folder per feature: `app-shell` (sidebar layout) and `app-header`.
+apps/desktop         Tauri shell: a native window on the web app, which runs as a bundled Node sidecar.
 packages/components  shadcn components, `cn()` helper and the Tailwind theme (`styles.css`).
 packages/contracts   Types shared by client, server and adapters, including the `CaptionSource` port.
 packages/teams-cdp   Interim `CaptionSource` that reads Teams captions over the Chrome DevTools Protocol.
@@ -42,6 +43,23 @@ It uses the account the machine is signed in with: run `gh auth login` (or set `
 The assistant is a chat, not an agent: shell, file and MCP tools are switched off and permission requests are refused. A conversation lives on the server (up to 20, closed after 30 idle minutes or with **New chat**), and a transcript longer than 300,000 characters is cut. Answers are shown as plain text.
 
 The SDK is not bundled into the server build: it finds its runtime in a platform package (about 190 MB) at run time, so it is a dependency of the published package and installed with it.
+
+## Desktop app (Tauri)
+
+`apps/desktop` wraps the app in a native window. The app needs its server (it talks to Teams over CDP, keeps transcripts in SQLite and calls the Copilot SDK), so Tauri ships the built server as a resource and starts it with a bundled Node binary (a sidecar) on a free local port. The window loads it from `127.0.0.1`, and the sidecar stops when the app closes.
+
+- Transcripts are kept in the app data folder (`%APPDATA%\dev.thivy.boardroomsketch\transcripts.db` on Windows), not where the app was started from.
+- The Copilot SDK is not bundled into the server, so `prepare-sidecar` installs it next to the server. That brings its runtime package, which makes the installer large (about 200 MB).
+- The sidecar is a copy of the Node that runs the build, so build on the OS you are targeting.
+
+Needs [Rust](https://rustup.rs) and, on Windows, the Visual Studio C++ Build Tools plus WebView2 (included in Windows 11). Open a new terminal after installing Rust so it is on the PATH.
+
+```bash
+bun run desktop:dev     # builds the web app, prepares the sidecar, opens the window
+bun run desktop:build   # produces an installer under apps/desktop/src-tauri/target/release/bundle
+```
+
+Dev runs the production server build, so run `desktop:dev` again after changing web code; use `bun run dev` for hot reload in a browser.
 
 ## Run without cloning
 
