@@ -10,7 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getCookie } from "@tanstack/react-start/server";
-import { CaptionsIcon } from "lucide-react";
+import { CaptionsIcon, FileTextIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import appCss from "../styles.css?url";
 
@@ -43,7 +43,10 @@ function RootComponent() {
     <RootDocument>
       <AppShell
         defaultOpen={sidebarOpen}
-        navItems={[{ label: "Teams captions", icon: CaptionsIcon, link: <Link to="/captions" /> }]}
+        navItems={[
+          { label: "Teams captions", icon: CaptionsIcon, link: <Link to="/captions" /> },
+          { label: "Transcripts", icon: FileTextIcon, link: <Link to="/transcripts" /> },
+        ]}
       >
         <Outlet />
       </AppShell>

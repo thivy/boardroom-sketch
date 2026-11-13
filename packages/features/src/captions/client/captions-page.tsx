@@ -7,7 +7,7 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@app/components/components/combobox";
-import type { Caption, Meeting } from "@app/contracts";
+import type { ActiveRecording, Caption, Meeting } from "@app/contracts";
 import { AppHeader } from "../../app-header";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
@@ -16,16 +16,16 @@ import {
   LoaderCircleIcon,
   PowerIcon,
   RefreshCwIcon,
-  Trash2Icon,
+  SquareIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useCaptionStream, type StreamState } from "./use-caption-stream";
 
 const STATE_LABEL: Record<StreamState, string> = {
-  idle: "Not connected",
+  idle: "Not recording",
   connecting: "Connecting…",
-  live: "Connected",
-  closed: "Meeting closed",
+  live: "Recording · saved to Transcripts",
+  closed: "Recording ended",
   error: "Could not connect",
 };
 
@@ -34,6 +34,26 @@ async function fetchMeetings(): Promise<Meeting[]> {
   const body = await response.json();
   if (!response.ok) throw new Error((body as { error: string }).error);
   return body as Meeting[];
+}
+
+async function fetchRecordings(): Promise<ActiveRecording[]> {
+  const response = await fetch("/api/captions/recordings");
+  return (await response.json()) as ActiveRecording[];
+}
+
+async function startRecording(meetingId: string) {
+  const response = await fetch("/api/captions/recordings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ meetingId }),
+  });
+  if (!response.ok) throw new Error(((await response.json()) as { error: string }).error);
+}
+
+async function stopRecording(meetingId: string) {
+  await fetch(`/api/captions/recordings?meeting=${encodeURIComponent(meetingId)}`, {
+    method: "DELETE",
+  });
 }
 
 async function restartTeams() {
@@ -73,6 +93,38 @@ export function CaptionsPage() {
     onSuccess: () => void targets.refetch(),
   });
   const connected = stream.state === "connecting" || stream.state === "live";
+  const [recordingId, setRecordingId] = useState<string>();
+
+  const start = useMutation({
+    mutationKey: ["captions", "start-recording"],
+    mutationFn: startRecording,
+    onSuccess: (_, meetingId) => {
+      setRecordingId(meetingId);
+      stream.follow(meetingId);
+    },
+  });
+  const stop = useMutation({
+    mutationKey: ["captions", "stop-recording"],
+    mutationFn: stopRecording,
+  });
+
+  // A recording keeps running on the server when this page closes; pick it up again on return.
+  const resumed = useRef(false);
+  const running = useQuery({
+    queryKey: ["captions", "recordings"],
+    queryFn: fetchRecordings,
+    staleTime: 0,
+    gcTime: 0,
+  });
+  const runningTitle = running.data?.find((item) => item.meetingId === recordingId)?.title;
+  useEffect(() => {
+    const active = running.data?.[0];
+    if (!active || resumed.current) return;
+    resumed.current = true;
+    setRecordingId(active.meetingId);
+    setSelected(active.meetingId);
+    stream.follow(active.meetingId);
+  }, [running.data, stream]);
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end" });
@@ -84,8 +136,9 @@ export function CaptionsPage() {
 
       <div className="grid gap-3 border-b p-4">
         <p className="text-sm text-muted-foreground">
-          Join the meeting and turn on live captions, then find the meeting and connect. If Teams is
-          not reachable, restart it from here.
+          Join the meeting and turn on live captions, then find the meeting and start recording.
+          Captions are saved on the server as they arrive, so closing this page does not stop the
+          recording. If Teams is not reachable, restart it from here.
         </p>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -121,7 +174,7 @@ export function CaptionsPage() {
               onValueChange={(item) => item && setSelected(item.id)}
               itemToStringLabel={(item: Meeting) => item.title || item.id}
               isItemEqualToValue={(a: Meeting, b: Meeting) => a.id === b.id}
-              disabled={connected}
+              disabled={connected || start.isPending}
             >
               <ComboboxInput
                 aria-label="Meeting tab"
@@ -141,17 +194,27 @@ export function CaptionsPage() {
             </Combobox>
           )}
 
-          {connected ? (
-            <Button variant="secondary" onClick={stream.disconnect}>
-              Disconnect
+          {connected && recordingId ? (
+            <Button variant="secondary" onClick={() => stop.mutate(recordingId)}>
+              <SquareIcon />
+              Stop recording
             </Button>
           ) : (
-            <Button disabled={!target} onClick={() => target && stream.connect(target)}>
-              Connect
+            <Button
+              disabled={!target || start.isPending}
+              onClick={() => target && start.mutate(target)}
+            >
+              {start.isPending && <LoaderCircleIcon className="animate-spin" />}
+              Start recording
             </Button>
           )}
         </div>
 
+        {start.isError && (
+          <p role="alert" className="text-sm text-destructive">
+            {start.error.message}
+          </p>
+        )}
         {restart.isError && (
           <p role="alert" className="text-sm text-destructive">
             {restart.error.message}
@@ -172,6 +235,7 @@ export function CaptionsPage() {
       <div className="flex items-center justify-between gap-2 border-b px-4 py-2 text-[13px]">
         <span className="text-muted-foreground">
           {STATE_LABEL[stream.state]}
+          {runningTitle && connected && <> · {runningTitle}</>}
           {stream.state === "live" && stream.captionsVisible === false && (
             <> · turn on live captions in the meeting</>
           )}
@@ -204,15 +268,6 @@ export function CaptionsPage() {
             }}
           >
             <DownloadIcon />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Clear transcript"
-            disabled={stream.captions.length === 0}
-            onClick={stream.clear}
-          >
-            <Trash2Icon />
           </Button>
         </div>
       </div>

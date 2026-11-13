@@ -35,3 +35,9 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# local transcripts database
+/data/
+apps/web/data/transcripts.db
+apps/web/data/transcripts.db-shm
+apps/web/data/transcripts.db-wal

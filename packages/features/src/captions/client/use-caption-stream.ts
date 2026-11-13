@@ -3,22 +3,27 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export type StreamState = "idle" | "connecting" | "live" | "closed" | "error";
 
-/** Follows the caption stream of one Teams tab; a caption keeps its place while its text grows. */
+/**
+ * Follows a recording that is running on the server. The stream starts with what is already saved,
+ * so following again after a reload shows the whole transcript; a caption keeps its place while
+ * its text grows. Not following never stops the recording.
+ */
 export function useCaptionStream() {
   const source = useRef<EventSource | null>(null);
   const [state, setState] = useState<StreamState>("idle");
   const [captions, setCaptions] = useState<Caption[]>([]);
   const [captionsVisible, setCaptionsVisible] = useState<boolean>();
 
-  const disconnect = useCallback(() => {
+  const unfollow = useCallback(() => {
     source.current?.close();
     source.current = null;
     setState("idle");
   }, []);
 
-  const connect = useCallback((meetingId: string) => {
+  const follow = useCallback((meetingId: string) => {
     source.current?.close();
     setState("connecting");
+    setCaptions([]);
     setCaptionsVisible(undefined);
 
     const stream = new EventSource(`/api/captions/stream?meeting=${encodeURIComponent(meetingId)}`);
@@ -42,7 +47,7 @@ export function useCaptionStream() {
       stream.close();
       setState("closed");
     });
-    // The server rejects an unreachable tab with an HTTP error, which EventSource reports as an error.
+    // The server answers an unknown recording with an HTTP error, which EventSource reports as an error.
     stream.addEventListener("error", () => {
       if (stream.readyState === EventSource.CLOSED) setState("error");
     });
@@ -50,12 +55,5 @@ export function useCaptionStream() {
 
   useEffect(() => () => source.current?.close(), []);
 
-  return {
-    state,
-    captions,
-    captionsVisible,
-    connect,
-    disconnect,
-    clear: () => setCaptions([]),
-  };
+  return { state, captions, captionsVisible, follow, unfollow };
 }

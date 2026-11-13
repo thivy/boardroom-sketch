@@ -11,9 +11,14 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CaptionsRouteImport } from './routes/captions'
+import { Route as TranscriptsRouteImport } from './routes/transcripts'
+import { Route as ApiTranscriptsRouteImport } from './routes/api/transcripts'
 import { Route as ApiCaptionsMeetingsRouteImport } from './routes/api/captions.meetings'
 import { Route as ApiCaptionsPrepareRouteImport } from './routes/api/captions.prepare'
+import { Route as ApiCaptionsRecordingsRouteImport } from './routes/api/captions.recordings'
 import { Route as ApiCaptionsStreamRouteImport } from './routes/api/captions.stream'
+import { Route as ApiTranscriptsExportRouteImport } from './routes/api/transcripts.export'
+import { Route as ApiTranscriptsSessionRouteImport } from './routes/api/transcripts.session'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -23,6 +28,16 @@ const IndexRoute = IndexRouteImport.update({
 const CaptionsRoute = CaptionsRouteImport.update({
   id: '/captions',
   path: '/captions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TranscriptsRoute = TranscriptsRouteImport.update({
+  id: '/transcripts',
+  path: '/transcripts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTranscriptsRoute = ApiTranscriptsRouteImport.update({
+  id: '/api/transcripts',
+  path: '/api/transcripts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCaptionsMeetingsRoute = ApiCaptionsMeetingsRouteImport.update({
@@ -35,63 +50,111 @@ const ApiCaptionsPrepareRoute = ApiCaptionsPrepareRouteImport.update({
   path: '/api/captions/prepare',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCaptionsRecordingsRoute = ApiCaptionsRecordingsRouteImport.update({
+  id: '/api/captions/recordings',
+  path: '/api/captions/recordings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCaptionsStreamRoute = ApiCaptionsStreamRouteImport.update({
   id: '/api/captions/stream',
   path: '/api/captions/stream',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTranscriptsExportRoute = ApiTranscriptsExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => ApiTranscriptsRoute,
+} as any)
+const ApiTranscriptsSessionRoute = ApiTranscriptsSessionRouteImport.update({
+  id: '/session',
+  path: '/session',
+  getParentRoute: () => ApiTranscriptsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/captions': typeof CaptionsRoute
+  '/transcripts': typeof TranscriptsRoute
+  '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
   '/api/captions/meetings': typeof ApiCaptionsMeetingsRoute
   '/api/captions/prepare': typeof ApiCaptionsPrepareRoute
+  '/api/captions/recordings': typeof ApiCaptionsRecordingsRoute
   '/api/captions/stream': typeof ApiCaptionsStreamRoute
+  '/api/transcripts/export': typeof ApiTranscriptsExportRoute
+  '/api/transcripts/session': typeof ApiTranscriptsSessionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/captions': typeof CaptionsRoute
+  '/transcripts': typeof TranscriptsRoute
+  '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
   '/api/captions/meetings': typeof ApiCaptionsMeetingsRoute
   '/api/captions/prepare': typeof ApiCaptionsPrepareRoute
+  '/api/captions/recordings': typeof ApiCaptionsRecordingsRoute
   '/api/captions/stream': typeof ApiCaptionsStreamRoute
+  '/api/transcripts/export': typeof ApiTranscriptsExportRoute
+  '/api/transcripts/session': typeof ApiTranscriptsSessionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/captions': typeof CaptionsRoute
+  '/transcripts': typeof TranscriptsRoute
+  '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
   '/api/captions/meetings': typeof ApiCaptionsMeetingsRoute
   '/api/captions/prepare': typeof ApiCaptionsPrepareRoute
+  '/api/captions/recordings': typeof ApiCaptionsRecordingsRoute
   '/api/captions/stream': typeof ApiCaptionsStreamRoute
+  '/api/transcripts/export': typeof ApiTranscriptsExportRoute
+  '/api/transcripts/session': typeof ApiTranscriptsSessionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/captions'
+    | '/transcripts'
+    | '/api/transcripts'
     | '/api/captions/meetings'
     | '/api/captions/prepare'
+    | '/api/captions/recordings'
     | '/api/captions/stream'
+    | '/api/transcripts/export'
+    | '/api/transcripts/session'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/captions'
+    | '/transcripts'
+    | '/api/transcripts'
     | '/api/captions/meetings'
     | '/api/captions/prepare'
+    | '/api/captions/recordings'
     | '/api/captions/stream'
+    | '/api/transcripts/export'
+    | '/api/transcripts/session'
   id:
     | '__root__'
     | '/'
     | '/captions'
+    | '/transcripts'
+    | '/api/transcripts'
     | '/api/captions/meetings'
     | '/api/captions/prepare'
+    | '/api/captions/recordings'
     | '/api/captions/stream'
+    | '/api/transcripts/export'
+    | '/api/transcripts/session'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CaptionsRoute: typeof CaptionsRoute
+  TranscriptsRoute: typeof TranscriptsRoute
+  ApiTranscriptsRoute: typeof ApiTranscriptsRouteWithChildren
   ApiCaptionsMeetingsRoute: typeof ApiCaptionsMeetingsRoute
   ApiCaptionsPrepareRoute: typeof ApiCaptionsPrepareRoute
+  ApiCaptionsRecordingsRoute: typeof ApiCaptionsRecordingsRoute
   ApiCaptionsStreamRoute: typeof ApiCaptionsStreamRoute
 }
 
@@ -111,6 +174,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CaptionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/transcripts': {
+      id: '/transcripts'
+      path: '/transcripts'
+      fullPath: '/transcripts'
+      preLoaderRoute: typeof TranscriptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/transcripts': {
+      id: '/api/transcripts'
+      path: '/api/transcripts'
+      fullPath: '/api/transcripts'
+      preLoaderRoute: typeof ApiTranscriptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/captions/meetings': {
       id: '/api/captions/meetings'
       path: '/api/captions/meetings'
@@ -125,6 +202,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCaptionsPrepareRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/captions/recordings': {
+      id: '/api/captions/recordings'
+      path: '/api/captions/recordings'
+      fullPath: '/api/captions/recordings'
+      preLoaderRoute: typeof ApiCaptionsRecordingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/captions/stream': {
       id: '/api/captions/stream'
       path: '/api/captions/stream'
@@ -132,14 +216,45 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCaptionsStreamRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/transcripts/export': {
+      id: '/api/transcripts/export'
+      path: '/export'
+      fullPath: '/api/transcripts/export'
+      preLoaderRoute: typeof ApiTranscriptsExportRouteImport
+      parentRoute: typeof ApiTranscriptsRoute
+    }
+    '/api/transcripts/session': {
+      id: '/api/transcripts/session'
+      path: '/session'
+      fullPath: '/api/transcripts/session'
+      preLoaderRoute: typeof ApiTranscriptsSessionRouteImport
+      parentRoute: typeof ApiTranscriptsRoute
+    }
   }
 }
+
+interface ApiTranscriptsRouteChildren {
+  ApiTranscriptsExportRoute: typeof ApiTranscriptsExportRoute
+  ApiTranscriptsSessionRoute: typeof ApiTranscriptsSessionRoute
+}
+
+const ApiTranscriptsRouteChildren: ApiTranscriptsRouteChildren = {
+  ApiTranscriptsExportRoute: ApiTranscriptsExportRoute,
+  ApiTranscriptsSessionRoute: ApiTranscriptsSessionRoute,
+}
+
+const ApiTranscriptsRouteWithChildren = ApiTranscriptsRoute._addFileChildren(
+  ApiTranscriptsRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CaptionsRoute: CaptionsRoute,
+  TranscriptsRoute: TranscriptsRoute,
+  ApiTranscriptsRoute: ApiTranscriptsRouteWithChildren,
   ApiCaptionsMeetingsRoute: ApiCaptionsMeetingsRoute,
   ApiCaptionsPrepareRoute: ApiCaptionsPrepareRoute,
+  ApiCaptionsRecordingsRoute: ApiCaptionsRecordingsRoute,
   ApiCaptionsStreamRoute: ApiCaptionsStreamRoute,
 }
 export const routeTree = rootRouteImport
