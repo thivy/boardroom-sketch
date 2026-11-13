@@ -1,14 +1,26 @@
 {
   "name": "boardroom-sketch",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Boardroom Sketch app shell",
+  "license": "MIT",
+  "repository": "github:thivy/boardroom-sketch",
+  "bin": {
+    "boardroom-sketch": "bin/boardroom-sketch.mjs"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
+  "files": [
+    "bin",
+    "apps/web/.output"
+  ],
+  "type": "module",
   "scripts": {
     "dev": "bun run --cwd apps/web dev",
     "build": "bun run --cwd apps/web build",
     "start": "bun run --cwd apps/web start",
+    "prepack": "bun run build",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
@@ -24,6 +36,9 @@
     "oxfmt": "^0.75.0",
     "oxlint": "^1.90.0",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "packageManager": "bun@1.4.4"
 }

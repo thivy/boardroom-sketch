@@ -6,4 +6,3 @@ This is a Bun workspaces monorepo. `apps/web` is a TanStack Start app (Vite + Ni
 - `packages/features` and `packages/components` must not import from `@tanstack/react-start`, `@tanstack/react-router` or any other web framework; the app only consumes them. `packages/components` holds the shadcn components and the Tailwind theme.
 - `packages/features` holds one folder per feature. A feature can have a `client/` (React UI, entry `@app/features/<feature>/client`) and a `server/` (plain `(Request) => Response` endpoints, entry `@app/features/<feature>/server`). Client and server never import each other, and the server imports no React or components. The feature work happens here.
 - Server state on the client goes through TanStack Query. `apps/web/src/router.tsx` creates the `QueryClient` (one per request) and `@tanstack/react-router-ssr-query` provides it; features use `@tanstack/react-query` hooks (`useMutation`, `useQuery`) and never create a client or provider.
-

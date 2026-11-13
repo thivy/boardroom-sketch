@@ -13,13 +13,34 @@ Server state on the client goes through [TanStack Query](https://tanstack.com/qu
 
 Packages ship TypeScript source (`exports` point at `src/`); Vite compiles them as part of the app graph.
 
+## Run without cloning
+
+```bash
+npx boardroom-sketch            # or: bunx boardroom-sketch
+npx boardroom-sketch --port 8080
+```
+
+Needs Node 20+. The package ships the prebuilt server, so nothing is installed or built on first run.
+
+## Publishing
+
+```bash
+npm login
+npm version patch      # or minor / major
+npm publish
+```
+
+`prepack` builds the app before the tarball is created; check the contents first with `npm pack --dry-run`.
+
 ## Getting started
 
 ```bash
 bun install
 bun run dev        # http://localhost:3000
 ```
-bun run dev        # http://localhost:3000
+
+bun run dev # http://localhost:3000
+
 ```
 
 ## Scripts
@@ -33,3 +54,5 @@ bun run dev        # http://localhost:3000
 | `bun run lint`      | oxlint                             |
 | `bun run fmt`       | oxfmt (`fmt:check` to verify)      |
 | `bun test`          | Run package tests (`bun:test`)     |
+
+```

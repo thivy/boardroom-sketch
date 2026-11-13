@@ -116,9 +116,7 @@ with absolutely-positioned `Badge`s.
 **Incorrect:**
 
 ```tsx
-<div className="w-fit rounded-2xl bg-primary px-3 py-2 text-primary-foreground">
-  {text}
-</div>
+<div className="w-fit rounded-2xl bg-primary px-3 py-2 text-primary-foreground">{text}</div>
 ```
 
 **Correct:**
@@ -324,20 +322,20 @@ function ToolRow({
   status,
   output,
 }: {
-  icon: React.ReactNode
-  title: string
-  status?: "running" | "error"
-  output?: string
+  icon: React.ReactNode;
+  title: string;
+  status?: "running" | "error";
+  output?: string;
 }) {
   const line = (
     <TraceLine status={status}>
       <TraceIcon>{icon}</TraceIcon>
       <TraceTitle>{title}</TraceTitle>
     </TraceLine>
-  )
+  );
 
   if (output === undefined) {
-    return line
+    return line;
   }
 
   return (
@@ -351,7 +349,7 @@ function ToolRow({
         </CodeBlock>
       </TraceCollapsibleContent>
     </TraceCollapsible>
-  )
+  );
 }
 ```
 
@@ -427,9 +425,7 @@ a `CodeBlock`, never a hand-rolled `<pre>`.
 **Incorrect:**
 
 ```tsx
-<pre className="rounded-md bg-muted p-3 font-mono text-xs whitespace-pre-wrap">
-  {output}
-</pre>
+<pre className="rounded-md bg-muted p-3 font-mono text-xs whitespace-pre-wrap">{output}</pre>
 ```
 
 **Correct:**
