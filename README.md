@@ -5,7 +5,6 @@ A [Bun](https://bun.sh) workspaces monorepo: a thin [TanStack Start](https://tan
 ```
 apps/web             TanStack Start app: root route and page routes. Nothing else.
 packages/features    One folder per feature: `app-shell` (sidebar layout) and `app-header`.
-apps/desktop         Tauri shell: opens a window on the web app, which runs as a bundled Node sidecar.
 packages/components  shadcn components, `cn()` helper and the Tailwind theme (`styles.css`).
 packages/contracts   Types shared by client, server and adapters, including the `CaptionSource` port.
 packages/teams-cdp   Interim `CaptionSource` that reads Teams captions over the Chrome DevTools Protocol.
@@ -25,19 +24,6 @@ The **Teams captions** page reads live captions from a Teams meeting you have op
 3. Open the app, choose **Teams captions**, click **Find meetings**, then **Connect**. Captions stream in; you can copy, download or clear the transcript.
 
 The adapter only talks to DevTools on `127.0.0.1` (port from `TEAMS_CDP_PORT`, default 9222). Restarting Teams ends any meeting you are in. It reads the caption elements of the Teams web client, so a Teams UI change can break it; the selectors are in `packages/teams-cdp/src/observer-script.ts`. Needs Node 22+ (global `WebSocket`).
-
-## Desktop app (Tauri)
-
-`apps/desktop` wraps the web app in a native window. The app needs its server (it talks to Teams over CDP and can restart Teams), so Tauri ships the built server as a resource and runs it with a bundled Node binary as a sidecar on a free local port; the window loads it from `127.0.0.1`. The sidecar is stopped when the window closes.
-
-Needs [Rust](https://rustup.rs) and, on Windows, the Visual Studio C++ Build Tools plus WebView2 (included in Windows 11).
-
-```bash
-bun run desktop:dev     # builds the web app, prepares the sidecar, opens the window
-bun run desktop:build   # produces an installer under apps/desktop/src-tauri/target/release/bundle
-```
-
-Dev runs the production server build, so rebuild (`desktop:dev` again) after changing web code; use `bun run dev` for hot reload in a browser.
 
 ## Run without cloning
 

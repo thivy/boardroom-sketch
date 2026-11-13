@@ -26,9 +26,7 @@
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "typecheck": "bun run --filter '*' typecheck",
-    "test": "bun test",
-    "desktop:dev": "bun run --cwd apps/desktop dev",
-    "desktop:build": "bun run --cwd apps/desktop build"
+    "test": "bun test"
   },
   "devDependencies": {
     "@types/bun": "^1",
