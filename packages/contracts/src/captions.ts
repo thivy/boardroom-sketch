@@ -1,6 +1,6 @@
 /** A Teams meeting that captions can be read from. */
 export type Meeting = {
-  /** Opaque to callers; only the source that listed the meeting understands it. */
+  /** Unique and stable for the meeting, so it tells meetings apart. For Teams it is the meeting thread id, `19:meeting_…@thread.v2`. */
   id: string;
   title: string;
 };
@@ -9,6 +9,8 @@ export type Meeting = {
 export type Caption = {
   id: string;
   speaker: string;
+  /** Stable id of the speaker (for Teams, `8:orgid:<Entra object id>`); empty when the source cannot tell. */
+  speakerId: string;
   text: string;
   /** Epoch milliseconds of the last change. */
   at: number;

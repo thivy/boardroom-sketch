@@ -82,7 +82,8 @@ The observer (`src/observer-script.ts`) runs inside the Teams page:
 
 1. It finds `[data-tid="closed-caption-text"]` elements. The line around each is `.fui-ChatMessageCompact`,
    `.fui-ChatMessage` or `.ui-chat__item`.
-2. The speaker comes from `[data-tid="author"]` in the same line.
+2. The speaker name comes from `[data-tid="author"]` in the same line. The speaker id (`Caption.speakerId`) comes from
+   the line's avatar URL (`.../profilepicturev2/8:orgid:<object id>?displayname=...`); it is an empty string when a line has no avatar.
 3. Each line gets an id (`<run>-<n>`, `<run>` random per injection) when first seen. Teams rewrites a line in
    place while speech is recognised, so the id stays and only `text` changes.
 4. A line is reported only when its text differs from the last report. The observer reacts to DOM mutations and
@@ -114,6 +115,24 @@ These map one to one onto `CaptionEvent`.
 | `src/cdp.ts`             | Minimal CDP client over the runtime's global `WebSocket` (Node 22+).         |
 | `src/observer-script.ts` | The script injected into the Teams page.                                     |
 | `src/launch-teams.ts`    | `prepare`: restarts new Teams on Windows with WebView2 remote debugging.     |
+
+## Meeting ids
+
+`Meeting.id` is the Teams meeting thread id (`19:meeting_…@thread.v2`), so meetings are told apart by a stable id
+instead of a DevTools page id, which changes whenever a window opens or closes. Teams does not put it in the
+page, so `list-meetings.ts` reads it from Teams' own IndexedDB: the `conversations` store of
+`Teams:conversation-manager:*` has one record per conversation, and a meeting's `threadProperties.topic` is the
+window title. Titles look like `<topic> | <org> | <account> | Microsoft Teams`, so each prefix of the title is
+tried as the topic. If several threads share a topic, the one with the latest message wins. Pages that match no
+meeting (the main client, chats) are not listed. A recurring meeting keeps one thread id across occurrences.
+
+## Docked and popped-out captions
+
+Popping the captions out of the meeting window opens a second Teams page with the same title, and that page
+holds the caption elements. `listMeetings()` therefore lists one meeting per thread id, and `watch()` observes
+every page of that meeting: the one you chose, any sibling found at start, and any that appears later (a
+3-second poll), so popping out or back in during a call works. Lines from all pages share one stream, and
+`captionsVisible` is true while any page shows the captions. The stream ends when the last page closes.
 
 ## Getting Teams ready to be read
 

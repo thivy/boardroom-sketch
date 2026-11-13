@@ -15,7 +15,7 @@ export const observerScript = `(() => {
     '[data-tid="closed-caption-v2-window-wrapper"]',
     '[data-tid="closed-captions-v2-items-renderer"]',
     '[data-tid="closed-caption-renderer-wrapper"]',
-    '[data-tid*="closed-caption"]',
+    '[data-tid*="closed-caption"]:not([data-tid*="button"])',
   ];
   const ITEMS = ".fui-ChatMessageCompact, .fui-ChatMessage, .ui-chat__item";
   const containerSelector = CONTAINERS.join(", ");
@@ -44,7 +44,11 @@ export const observerScript = `(() => {
       lastSeen.set(id, text);
 
       const speaker = (item.querySelector('[data-tid="author"]')?.textContent ?? "").trim();
-      report({ type: "caption", caption: { id, speaker, text, at: Date.now() } });
+      // The avatar URL ends in the speaker's id: .../profilepicturev2/8:orgid:<object id>?displayname=...
+      const avatar = item.querySelector('img[src*="profilepicture"]')?.getAttribute("src") ?? "";
+      const tail = avatar.split("/profilepicture")[1]?.split("/")[1]?.split("?")[0];
+      const speakerId = tail ? decodeURIComponent(tail) : "";
+      report({ type: "caption", caption: { id, speaker, speakerId, text, at: Date.now() } });
     });
   };
 
