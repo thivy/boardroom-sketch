@@ -5,13 +5,17 @@
   "type": "module",
   "exports": {
     "./app-header": "./src/app-header/index.ts",
-    "./app-shell": "./src/app-shell/index.ts"
+    "./app-shell": "./src/app-shell/index.ts",
+    "./captions/client": "./src/captions/client/index.ts",
+    "./captions/server": "./src/captions/server/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@app/components": "workspace:*",
+    "@app/contracts": "workspace:*",
+    "@tanstack/react-query": "^5.105.0",
     "lucide-react": "^1.62.0"
   },
   "peerDependencies": {

@@ -1,1 +1,1 @@
-export { AppShell, type AppShellProps } from "./app-shell";
+export { AppShell, type AppShellProps, type NavItem } from "./app-shell";

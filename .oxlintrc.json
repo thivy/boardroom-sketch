@@ -118,6 +118,49 @@
         "prefer-rest-params": "error",
         "prefer-spread": "error"
       }
+    },
+    {
+      "files": ["packages/features/src/captions/server/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "react",
+                  "react/*",
+                  "react-dom",
+                  "react-dom/*",
+                  "lucide-react",
+                  "@tanstack/*",
+                  "@app/components",
+                  "@app/components/**",
+                  "../client",
+                  "../client/**"
+                ],
+                "message": "The captions server runs without a UI: keep React, components and the client out of it."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/features/src/captions/client/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["../server", "../server/**"],
+                "message": "The captions client must not import server code; share types through @app/contracts."
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }

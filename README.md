@@ -13,6 +13,16 @@ Server state on the client goes through [TanStack Query](https://tanstack.com/qu
 
 Packages ship TypeScript source (`exports` point at `src/`); Vite compiles them as part of the app graph.
 
+## Teams captions
+
+The **Teams captions** page reads live captions from a Teams meeting you have open in Chrome (or Edge), through the Chrome DevTools Protocol:
+
+1. **Teams desktop (new Teams, Windows):** click **Restart Teams** on the page. It quits Teams and relaunches it with `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222`, then waits for DevTools. **Or a browser:** start it with remote debugging on a separate profile: `chrome.exe --remote-debugging-port=9222 --user-data-dir=%TEMP%\chrome-teams`.
+2. Join the meeting and turn on **Live captions** (More > Language and speech).
+3. Open the app, choose **Teams captions**, click **Find meetings**, then **Connect**. Captions stream in; you can copy, download or clear the transcript.
+
+The server only talks to DevTools on `127.0.0.1`. Restarting Teams ends any meeting you are in. It reads the caption elements of the Teams web client (`data-tid="closed-caption-text"` and `author`), so a Teams UI change can break it; the selectors are in `packages/features/src/captions/server/observer-script.ts`. Needs Node 22+ (global `WebSocket`).
+
 ## Run without cloning
 
 ```bash
@@ -20,7 +30,7 @@ npx boardroom-sketch            # or: bunx boardroom-sketch
 npx boardroom-sketch --port 8080
 ```
 
-Needs Node 20+. The package ships the prebuilt server, so nothing is installed or built on first run.
+Needs Node 22+. The package ships the prebuilt server, so nothing is installed or built on first run.
 
 ## Publishing
 

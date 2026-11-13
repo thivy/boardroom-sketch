@@ -1,9 +1,16 @@
 import { themeScript } from "@app/features/app-header";
 import { AppShell } from "@app/features/app-shell";
 import type { QueryClient } from "@tanstack/react-query";
-import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import {
+  createRootRouteWithContext,
+  HeadContent,
+  Link,
+  Outlet,
+  Scripts,
+} from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getCookie } from "@tanstack/react-start/server";
+import { CaptionsIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import appCss from "../styles.css?url";
 
@@ -34,7 +41,10 @@ function RootComponent() {
 
   return (
     <RootDocument>
-      <AppShell defaultOpen={sidebarOpen}>
+      <AppShell
+        defaultOpen={sidebarOpen}
+        navItems={[{ label: "Teams captions", icon: CaptionsIcon, link: <Link to="/captions" /> }]}
+      >
         <Outlet />
       </AppShell>
     </RootDocument>
