@@ -21,6 +21,7 @@
         "@app/components": "workspace:*",
         "@app/contracts": "workspace:*",
         "@app/features": "workspace:*",
+        "@app/teams-cdp": "workspace:*",
         "@tanstack/react-query": "^5.105.0",
         "@tanstack/react-router": "^1.170.46",
         "@tanstack/react-router-ssr-query": "^1.167.3",
@@ -76,6 +77,13 @@
         "react-dom": "^19",
       },
     },
+    "packages/teams-cdp": {
+      "name": "@app/teams-cdp",
+      "version": "0.0.0",
+      "dependencies": {
+        "@app/contracts": "workspace:*",
+      },
+    },
   },
   "packages": {
     "@app/components": ["@app/components@workspace:packages/components"],
@@ -83,6 +91,8 @@
     "@app/contracts": ["@app/contracts@workspace:packages/contracts"],
 
     "@app/features": ["@app/features@workspace:packages/features"],
+
+    "@app/teams-cdp": ["@app/teams-cdp@workspace:packages/teams-cdp"],
 
     "@babel/code-frame": ["@babel/code-frame@7.29.7", "https://packagefeedproxy.microsoft.io/npm/@babel/code-frame/-/code-frame-7.29.7.tgz", { "dependencies": { "@babel/helper-validator-identifier": "^7.29.7", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha1-8vu/6ofESiFZDsUVt3iywm2IZuc="],
 

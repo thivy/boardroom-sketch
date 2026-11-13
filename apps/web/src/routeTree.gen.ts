@@ -11,9 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CaptionsRouteImport } from './routes/captions'
-import { Route as ApiCaptionsLaunchRouteImport } from './routes/api/captions.launch'
+import { Route as ApiCaptionsMeetingsRouteImport } from './routes/api/captions.meetings'
+import { Route as ApiCaptionsPrepareRouteImport } from './routes/api/captions.prepare'
 import { Route as ApiCaptionsStreamRouteImport } from './routes/api/captions.stream'
-import { Route as ApiCaptionsTargetsRouteImport } from './routes/api/captions.targets'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -25,9 +25,14 @@ const CaptionsRoute = CaptionsRouteImport.update({
   path: '/captions',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiCaptionsLaunchRoute = ApiCaptionsLaunchRouteImport.update({
-  id: '/api/captions/launch',
-  path: '/api/captions/launch',
+const ApiCaptionsMeetingsRoute = ApiCaptionsMeetingsRouteImport.update({
+  id: '/api/captions/meetings',
+  path: '/api/captions/meetings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCaptionsPrepareRoute = ApiCaptionsPrepareRouteImport.update({
+  id: '/api/captions/prepare',
+  path: '/api/captions/prepare',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCaptionsStreamRoute = ApiCaptionsStreamRouteImport.update({
@@ -35,64 +40,59 @@ const ApiCaptionsStreamRoute = ApiCaptionsStreamRouteImport.update({
   path: '/api/captions/stream',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiCaptionsTargetsRoute = ApiCaptionsTargetsRouteImport.update({
-  id: '/api/captions/targets',
-  path: '/api/captions/targets',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/captions': typeof CaptionsRoute
-  '/api/captions/launch': typeof ApiCaptionsLaunchRoute
+  '/api/captions/meetings': typeof ApiCaptionsMeetingsRoute
+  '/api/captions/prepare': typeof ApiCaptionsPrepareRoute
   '/api/captions/stream': typeof ApiCaptionsStreamRoute
-  '/api/captions/targets': typeof ApiCaptionsTargetsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/captions': typeof CaptionsRoute
-  '/api/captions/launch': typeof ApiCaptionsLaunchRoute
+  '/api/captions/meetings': typeof ApiCaptionsMeetingsRoute
+  '/api/captions/prepare': typeof ApiCaptionsPrepareRoute
   '/api/captions/stream': typeof ApiCaptionsStreamRoute
-  '/api/captions/targets': typeof ApiCaptionsTargetsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/captions': typeof CaptionsRoute
-  '/api/captions/launch': typeof ApiCaptionsLaunchRoute
+  '/api/captions/meetings': typeof ApiCaptionsMeetingsRoute
+  '/api/captions/prepare': typeof ApiCaptionsPrepareRoute
   '/api/captions/stream': typeof ApiCaptionsStreamRoute
-  '/api/captions/targets': typeof ApiCaptionsTargetsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/captions'
-    | '/api/captions/launch'
+    | '/api/captions/meetings'
+    | '/api/captions/prepare'
     | '/api/captions/stream'
-    | '/api/captions/targets'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/captions'
-    | '/api/captions/launch'
+    | '/api/captions/meetings'
+    | '/api/captions/prepare'
     | '/api/captions/stream'
-    | '/api/captions/targets'
   id:
     | '__root__'
     | '/'
     | '/captions'
-    | '/api/captions/launch'
+    | '/api/captions/meetings'
+    | '/api/captions/prepare'
     | '/api/captions/stream'
-    | '/api/captions/targets'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CaptionsRoute: typeof CaptionsRoute
-  ApiCaptionsLaunchRoute: typeof ApiCaptionsLaunchRoute
+  ApiCaptionsMeetingsRoute: typeof ApiCaptionsMeetingsRoute
+  ApiCaptionsPrepareRoute: typeof ApiCaptionsPrepareRoute
   ApiCaptionsStreamRoute: typeof ApiCaptionsStreamRoute
-  ApiCaptionsTargetsRoute: typeof ApiCaptionsTargetsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -111,11 +111,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CaptionsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/captions/launch': {
-      id: '/api/captions/launch'
-      path: '/api/captions/launch'
-      fullPath: '/api/captions/launch'
-      preLoaderRoute: typeof ApiCaptionsLaunchRouteImport
+    '/api/captions/meetings': {
+      id: '/api/captions/meetings'
+      path: '/api/captions/meetings'
+      fullPath: '/api/captions/meetings'
+      preLoaderRoute: typeof ApiCaptionsMeetingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/captions/prepare': {
+      id: '/api/captions/prepare'
+      path: '/api/captions/prepare'
+      fullPath: '/api/captions/prepare'
+      preLoaderRoute: typeof ApiCaptionsPrepareRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/captions/stream': {
@@ -125,22 +132,15 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCaptionsStreamRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/captions/targets': {
-      id: '/api/captions/targets'
-      path: '/api/captions/targets'
-      fullPath: '/api/captions/targets'
-      preLoaderRoute: typeof ApiCaptionsTargetsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CaptionsRoute: CaptionsRoute,
-  ApiCaptionsLaunchRoute: ApiCaptionsLaunchRoute,
+  ApiCaptionsMeetingsRoute: ApiCaptionsMeetingsRoute,
+  ApiCaptionsPrepareRoute: ApiCaptionsPrepareRoute,
   ApiCaptionsStreamRoute: ApiCaptionsStreamRoute,
-  ApiCaptionsTargetsRoute: ApiCaptionsTargetsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

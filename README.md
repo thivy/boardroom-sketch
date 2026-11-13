@@ -6,9 +6,11 @@ A [Bun](https://bun.sh) workspaces monorepo: a thin [TanStack Start](https://tan
 apps/web             TanStack Start app: root route and page routes. Nothing else.
 packages/features    One folder per feature: `app-shell` (sidebar layout) and `app-header`.
 packages/components  shadcn components, `cn()` helper and the Tailwind theme (`styles.css`).
+packages/contracts   Types shared by client, server and adapters, including the `CaptionSource` port.
+packages/teams-cdp   Interim `CaptionSource` that reads Teams captions over the Chrome DevTools Protocol.
 ```
 
-Dependency direction: `web` → `features`, `components`; `features` → `components`.
+Dependency direction: `web` → `features`, `components`, `teams-cdp`; `features` → `components`, `contracts`; `teams-cdp` → `contracts`. The captions feature knows only the `CaptionSource` port; the app wires the adapter in `apps/web/src/caption-handlers.ts` (see [`packages/features/CAPTIONS.md`](packages/features/CAPTIONS.md) and [`packages/teams-cdp`](packages/teams-cdp/README.md)).
 Server state on the client goes through [TanStack Query](https://tanstack.com/query): `apps/web/src/router.tsx` creates a `QueryClient` per request and connects it to the router for server rendering.
 
 Packages ship TypeScript source (`exports` point at `src/`); Vite compiles them as part of the app graph.
@@ -21,7 +23,7 @@ The **Teams captions** page reads live captions from a Teams meeting you have op
 2. Join the meeting and turn on **Live captions** (More > Language and speech).
 3. Open the app, choose **Teams captions**, click **Find meetings**, then **Connect**. Captions stream in; you can copy, download or clear the transcript.
 
-The server only talks to DevTools on `127.0.0.1`. Restarting Teams ends any meeting you are in. It reads the caption elements of the Teams web client (`data-tid="closed-caption-text"` and `author`), so a Teams UI change can break it; the selectors are in `packages/features/src/captions/server/observer-script.ts`. Needs Node 22+ (global `WebSocket`).
+The adapter only talks to DevTools on `127.0.0.1` (port from `TEAMS_CDP_PORT`, default 9222). Restarting Teams ends any meeting you are in. It reads the caption elements of the Teams web client, so a Teams UI change can break it; the selectors are in `packages/teams-cdp/src/observer-script.ts`. Needs Node 22+ (global `WebSocket`).
 
 ## Run without cloning
 

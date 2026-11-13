@@ -140,6 +140,10 @@
                   "../client/**"
                 ],
                 "message": "The captions server runs without a UI: keep React, components and the client out of it."
+              },
+              {
+                "group": ["@app/teams-cdp", "@app/teams-cdp/**"],
+                "message": "The captions server only knows the CaptionSource port; the app wires an adapter in (apps/web/src/caption-handlers.ts)."
               }
             ]
           }
@@ -156,6 +160,30 @@
               {
                 "group": ["../server", "../server/**"],
                 "message": "The captions client must not import server code; share types through @app/contracts."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/teams-cdp/src/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@app/features",
+                  "@app/features/**",
+                  "@app/components",
+                  "@app/components/**",
+                  "react",
+                  "react-dom",
+                  "@tanstack/*"
+                ],
+                "message": "The Teams CDP adapter only implements CaptionSource from @app/contracts; it knows nothing about features, React or web frameworks."
               }
             ]
           }

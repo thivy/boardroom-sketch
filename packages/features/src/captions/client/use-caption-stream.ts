@@ -16,14 +16,12 @@ export function useCaptionStream() {
     setState("idle");
   }, []);
 
-  const connect = useCallback((port: number, target: string) => {
+  const connect = useCallback((meetingId: string) => {
     source.current?.close();
     setState("connecting");
     setCaptionsVisible(undefined);
 
-    const stream = new EventSource(
-      `/api/captions/stream?port=${port}&target=${encodeURIComponent(target)}`,
-    );
+    const stream = new EventSource(`/api/captions/stream?meeting=${encodeURIComponent(meetingId)}`);
     source.current = stream;
 
     stream.addEventListener("open", () => setState("live"));

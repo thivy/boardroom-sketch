@@ -1,1 +1,1 @@
-export { launchHandler, streamHandler, targetsHandler } from "./handlers";
+export { createCaptionHandlers } from "./handlers";

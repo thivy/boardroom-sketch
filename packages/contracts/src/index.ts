@@ -1,1 +1,1 @@
-export type { Caption, CaptionStatus, MeetingTarget } from "./captions";
+export type { Caption, CaptionEvent, CaptionSource, CaptionStatus, Meeting } from "./captions";

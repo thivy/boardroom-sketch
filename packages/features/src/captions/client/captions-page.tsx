@@ -7,8 +7,7 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@app/components/components/combobox";
-import { Input } from "@app/components/components/input";
-import type { Caption, MeetingTarget } from "@app/contracts";
+import type { Caption, Meeting } from "@app/contracts";
 import { AppHeader } from "../../app-header";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
@@ -26,19 +25,19 @@ const STATE_LABEL: Record<StreamState, string> = {
   idle: "Not connected",
   connecting: "Connecting…",
   live: "Connected",
-  closed: "Tab closed",
+  closed: "Meeting closed",
   error: "Could not connect",
 };
 
-async function fetchTargets(port: number): Promise<MeetingTarget[]> {
-  const response = await fetch(`/api/captions/targets?port=${port}`);
+async function fetchMeetings(): Promise<Meeting[]> {
+  const response = await fetch("/api/captions/meetings");
   const body = await response.json();
   if (!response.ok) throw new Error((body as { error: string }).error);
-  return body as MeetingTarget[];
+  return body as Meeting[];
 }
 
-async function restartTeams(port: number) {
-  const response = await fetch(`/api/captions/launch?port=${port}`, {
+async function restartTeams() {
+  const response = await fetch("/api/captions/prepare", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: "{}",
@@ -56,15 +55,13 @@ function toTranscript(captions: Caption[]) {
 }
 
 export function CaptionsPage() {
-  const [port, setPort] = useState("9222");
   const [selected, setSelected] = useState<string>();
   const stream = useCaptionStream();
   const end = useRef<HTMLDivElement>(null);
 
-  const portNumber = Number(port);
   const targets = useQuery({
-    queryKey: ["captions", "targets", portNumber],
-    queryFn: () => fetchTargets(portNumber),
+    queryKey: ["captions", "meetings"],
+    queryFn: fetchMeetings,
     enabled: false,
     retry: false,
   });
@@ -72,7 +69,7 @@ export function CaptionsPage() {
   const target = selected ?? targets.data?.[0]?.id;
   const restart = useMutation({
     mutationKey: ["captions", "restart-teams"],
-    mutationFn: () => restartTeams(portNumber),
+    mutationFn: restartTeams,
     onSuccess: () => void targets.refetch(),
   });
   const connected = stream.state === "connecting" || stream.state === "live";
@@ -87,24 +84,14 @@ export function CaptionsPage() {
 
       <div className="grid gap-3 border-b p-4">
         <p className="text-sm text-muted-foreground">
-          For the Teams desktop app, restart it with debugging on. Or start a browser yourself, join
-          the meeting there and turn on live captions. Then find the meeting tab and connect.
+          Join the meeting and turn on live captions, then find the meeting and connect. If Teams is
+          not reachable, restart it from here.
         </p>
-        <code className="block overflow-x-auto rounded-md bg-muted px-3 py-2 text-xs">
-          chrome.exe --remote-debugging-port={port || "9222"} --user-data-dir=%TEMP%\chrome-teams
-        </code>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Input
-            aria-label="Debugging port"
-            className="w-24"
-            inputMode="numeric"
-            value={port}
-            onChange={(event) => setPort(event.target.value)}
-          />
           <Button
             variant="outline"
-            disabled={!Number.isInteger(portNumber) || restart.isPending}
+            disabled={restart.isPending}
             onClick={() => {
               if (
                 window.confirm(
@@ -120,7 +107,7 @@ export function CaptionsPage() {
           </Button>
           <Button
             variant="outline"
-            disabled={!Number.isInteger(portNumber) || targets.isFetching}
+            disabled={targets.isFetching}
             onClick={() => void targets.refetch()}
           >
             <RefreshCwIcon className={targets.isFetching ? "animate-spin" : undefined} />
@@ -132,8 +119,8 @@ export function CaptionsPage() {
               items={targets.data}
               value={targets.data.find((item) => item.id === target) ?? null}
               onValueChange={(item) => item && setSelected(item.id)}
-              itemToStringLabel={(item: MeetingTarget) => item.title || item.id}
-              isItemEqualToValue={(a: MeetingTarget, b: MeetingTarget) => a.id === b.id}
+              itemToStringLabel={(item: Meeting) => item.title || item.id}
+              isItemEqualToValue={(a: Meeting, b: Meeting) => a.id === b.id}
               disabled={connected}
             >
               <ComboboxInput
@@ -144,7 +131,7 @@ export function CaptionsPage() {
               <ComboboxContent>
                 <ComboboxEmpty>No meetings found.</ComboboxEmpty>
                 <ComboboxList>
-                  {(item: MeetingTarget) => (
+                  {(item: Meeting) => (
                     <ComboboxItem key={item.id} value={item}>
                       {item.title || item.id}
                     </ComboboxItem>
@@ -159,7 +146,7 @@ export function CaptionsPage() {
               Disconnect
             </Button>
           ) : (
-            <Button disabled={!target} onClick={() => target && stream.connect(portNumber, target)}>
+            <Button disabled={!target} onClick={() => target && stream.connect(target)}>
               Connect
             </Button>
           )}
