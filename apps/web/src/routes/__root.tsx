@@ -1,5 +1,6 @@
 import { themeScript } from "@app/features/app-header";
 import { AppShell } from "@app/features/app-shell";
+import { UpdateBanner } from "@app/features/updates/client";
 import type { QueryClient } from "@tanstack/react-query";
 import {
   createRootRouteWithContext,
@@ -50,6 +51,7 @@ function RootComponent() {
         ]}
       >
         <Outlet />
+        <UpdateBanner />
       </AppShell>
     </RootDocument>
   );

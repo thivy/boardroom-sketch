@@ -1,7 +1,10 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The window only loads the local app server; it needs no extra permissions.",
+  "description": "The window loads the local app server, which may check for updates and restart the app.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "remote": {
+    "urls": ["http://127.0.0.1:*"]
+  },
+  "permissions": ["core:default", "updater:default", "process:allow-restart"]
 }

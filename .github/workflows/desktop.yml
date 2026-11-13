@@ -26,8 +26,6 @@ jobs:
             os: windows-latest
           - name: macOS
             os: macos-latest
-          - name: Linux
-            os: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
@@ -44,18 +42,26 @@ jobs:
         with:
           workspaces: apps/desktop/src-tauri
 
-      - name: Install Linux libraries for Tauri
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev \
-            libayatana-appindicator3-dev librsvg2-dev libfuse2 patchelf
-
       - run: bun install --frozen-lockfile
+
+      # The updater compares this version with the installed one, so a release must carry its tag's version.
+      - name: Use the tag as the app version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          node -e "
+            const fs = require('fs');
+            const file = 'apps/desktop/src-tauri/tauri.conf.json';
+            const config = JSON.parse(fs.readFileSync(file, 'utf8'));
+            config.version = process.env.GITHUB_REF_NAME.replace(/^v/, '');
+            fs.writeFileSync(file, JSON.stringify(config, null, 2));
+          "
 
       - name: Build the desktop app
         env:
-          APPIMAGE_EXTRACT_AND_RUN: "1"
+          # Signs the update packages; the matching public key is in tauri.conf.json.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: bun run desktop:build
 
       - name: Upload installers
@@ -68,9 +74,8 @@ jobs:
             apps/desktop/src-tauri/target/release/bundle/**/*.msi
             apps/desktop/src-tauri/target/release/bundle/**/*.exe
             apps/desktop/src-tauri/target/release/bundle/**/*.dmg
-            apps/desktop/src-tauri/target/release/bundle/**/*.deb
-            apps/desktop/src-tauri/target/release/bundle/**/*.rpm
-            apps/desktop/src-tauri/target/release/bundle/**/*.AppImage
+            apps/desktop/src-tauri/target/release/bundle/**/*.app.tar.gz
+            apps/desktop/src-tauri/target/release/bundle/**/*.sig
 
   release:
     name: Publish release
@@ -85,7 +90,15 @@ jobs:
           path: installers
           merge-multiple: true
 
+      - uses: actions/checkout@v4
+
+      # Names without spaces, and latest.json: the file the installed app checks for a newer version.
+      - name: Write the updater manifest
+        run: node .github/scripts/updater-manifest.mjs installers "${{ github.ref_name }}" "${{ github.repository }}"
+
       - uses: softprops/action-gh-release@v2
         with:
-          files: installers/**/*
+          files: |
+            installers/**/*
+            installers/latest.json
           generate_release_notes: true

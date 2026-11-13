@@ -9,7 +9,8 @@
     "./captions/client": "./src/captions/client/index.ts",
     "./captions/server": "./src/captions/server/index.ts",
     "./chat/client": "./src/chat/client/index.ts",
-    "./chat/server": "./src/chat/server/index.ts"
+    "./chat/server": "./src/chat/server/index.ts",
+    "./updates/client": "./src/updates/client/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

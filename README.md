@@ -63,7 +63,7 @@ Dev runs the production server build, so run `desktop:dev` again after changing 
 
 ### Download a build from GitHub
 
-The `Desktop app` workflow (`.github/workflows/desktop.yml`) builds the installers for Windows (`.msi`, `.exe`), macOS (`.dmg`) and Linux (`.deb`, `.rpm`, `.AppImage`).
+The `Desktop app` workflow (`.github/workflows/desktop.yml`) builds the installers for Windows (`.msi`, `.exe`) and macOS (`.dmg`).
 
 - **Any commit:** Actions → _Desktop app_ → _Run workflow_, then download the installers from the run's **Artifacts** (kept for 30 days).
 - **A release:** push a version tag and the installers are attached to a GitHub Release with generated notes:
@@ -71,6 +71,19 @@ The `Desktop app` workflow (`.github/workflows/desktop.yml`) builds the installe
   ```bash
   git tag v0.1.0 && git push origin v0.1.0
   ```
+
+### Automatic updates
+
+The installed desktop app checks the latest GitHub Release for a newer version when it starts and every 6 hours. When there is one, a card appears in the corner with **Update and restart**: it downloads the update, installs it and restarts the app. Nothing happens in a normal browser.
+
+How it fits together:
+
+- Update packages are signed. The public key is in `tauri.conf.json`; the private key is the `TAURI_SIGNING_PRIVATE_KEY` Actions secret (a copy is at `~/.tauri/boardroom-sketch.key` on the machine that created it; if it is lost, installed apps can no longer be updated, so keep a backup). Add `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` too if you ever give the key a password.
+- A `v*` tag build sets the app version from the tag, signs the packages and publishes `latest.json` next to the installers (`.github/scripts/updater-manifest.mjs`). The app reads `https://github.com/thivy/boardroom-sketch/releases/latest/download/latest.json`.
+- Updates only reach apps built with the public key and an updater-enabled version, so the first release with this feature has to be installed by hand; later tags update it.
+- The window loads the app from `127.0.0.1`, so `capabilities/default.json` lets that origin (only) use the updater and restart. The banner is `packages/features/src/updates`.
+
+Release steps: `git tag v0.2.0 && git push origin v0.2.0`.
 
 The builds are not code-signed, so Windows SmartScreen and macOS Gatekeeper warn on first run. The installer version comes from `apps/desktop/src-tauri/tauri.conf.json`, not the tag.
 

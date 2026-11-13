@@ -44,6 +44,8 @@ fn server_entry(app: &tauri::AppHandle) -> PathBuf {
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             let port = free_port();
             // Transcripts live in the app's data folder, not wherever the app was started from.
