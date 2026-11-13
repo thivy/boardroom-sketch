@@ -6,3 +6,4 @@ export type {
   StoredSession,
   TranscriptStore,
 } from "./transcripts";
+export type { ChatBackend, ChatEvent, ChatSession, ChatSessionOptions, ChatStatus } from "./chat";

@@ -8,10 +8,11 @@ packages/features    One folder per feature: `app-shell` (sidebar layout) and `a
 packages/components  shadcn components, `cn()` helper and the Tailwind theme (`styles.css`).
 packages/contracts   Types shared by client, server and adapters, including the `CaptionSource` port.
 packages/teams-cdp   Interim `CaptionSource` that reads Teams captions over the Chrome DevTools Protocol.
+packages/copilot-sdk       `ChatBackend` that answers through the GitHub Copilot SDK.
 packages/transcripts-sqlite  `TranscriptStore` that keeps transcripts in a SQLite file (`node:sqlite`).
 ```
 
-Dependency direction: `web` → `features`, `components`, `teams-cdp`, `transcripts-sqlite`; `features` → `components`, `contracts`; the two adapters → `contracts`. The captions feature knows only the `CaptionSource` and `TranscriptStore` ports; the app wires the adapter in `apps/web/src/caption-handlers.ts` (see [`packages/features/CAPTIONS.md`](packages/features/CAPTIONS.md) and [`packages/teams-cdp`](packages/teams-cdp/README.md)).
+Dependency direction: `web` → `features`, `components`, `teams-cdp`, `transcripts-sqlite`, `copilot-sdk`; `features` → `components`, `contracts`; the two adapters → `contracts`. The captions and chat features know only the `CaptionSource`, `TranscriptStore` and `ChatBackend` ports; the app wires the adapters in `apps/web/src/caption-handlers.ts` and `chat-handlers.ts` (see [`packages/features/CAPTIONS.md`](packages/features/CAPTIONS.md) and [`packages/teams-cdp`](packages/teams-cdp/README.md)).
 Server state on the client goes through [TanStack Query](https://tanstack.com/query): `apps/web/src/router.tsx` creates a `QueryClient` per request and connects it to the router for server rendering.
 
 Packages ship TypeScript source (`exports` point at `src/`); Vite compiles them as part of the app graph.
@@ -31,6 +32,16 @@ Recording happens on the server, not in the page: **Start recording** creates a 
 The database is `./data/transcripts.db` (relative to where the server runs; git-ignored). Set `TRANSCRIPTS_DB` to use another file. It has `meetings`, `sessions`, `speakers` and `captions` tables (schema and migrations in `packages/transcripts-sqlite/src/schema.ts`). A session left open by a crash is closed at its last caption on the next start.
 
 The adapter only talks to DevTools on `127.0.0.1` (port from `TEAMS_CDP_PORT`, default 9222). Restarting Teams ends any meeting you are in. It reads the caption elements of the Teams web client, so a Teams UI change can break it; the selectors are in `packages/teams-cdp/src/observer-script.ts`. Needs Node 22+ (global `WebSocket`).
+
+## Analysis chat
+
+The **Analysis chat** page is a chat window backed by the [GitHub Copilot SDK](https://www.npmjs.com/package/@github/copilot-sdk). Optionally pick a saved transcript first and the assistant answers from it (summaries, action items, decisions); the choice is fixed for that chat, so use **New chat** to switch.
+
+It uses the account the machine is signed in with: run `gh auth login` (or set `COPILOT_GITHUB_TOKEN`). The page shows the account, or why it cannot be used. Set `COPILOT_MODEL` to pick a model; otherwise the runtime chooses. Requests count against that account's Copilot usage.
+
+The assistant is a chat, not an agent: shell, file and MCP tools are switched off and permission requests are refused. A conversation lives on the server (up to 20, closed after 30 idle minutes or with **New chat**), and a transcript longer than 300,000 characters is cut. Answers are shown as plain text.
+
+The SDK is not bundled into the server build: it finds its runtime in a platform package (about 190 MB) at run time, so it is a dependency of the published package and installed with it.
 
 ## Run without cloning
 

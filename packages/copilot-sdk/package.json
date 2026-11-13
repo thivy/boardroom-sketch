@@ -1,0 +1,16 @@
+{
+  "name": "@app/copilot-sdk",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@app/contracts": "workspace:*",
+    "@github/copilot-sdk": "^1.0.32"
+  }
+}

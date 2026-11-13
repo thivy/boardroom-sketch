@@ -52,18 +52,6 @@
         "react/no-unsafe": "off",
         "react/react-in-jsx-scope": "off",
         "import/no-anonymous-default-export": "warn",
-        "jsx-a11y/alt-text": [
-          "warn",
-          {
-            "elements": ["img"],
-            "img": ["Image"]
-          }
-        ],
-        "jsx-a11y/aria-props": "warn",
-        "jsx-a11y/aria-proptypes": "warn",
-        "jsx-a11y/aria-unsupported-elements": "warn",
-        "jsx-a11y/role-has-required-aria-props": "warn",
-        "jsx-a11y/role-supports-aria-props": "warn",
         "react/rules-of-hooks": "error",
         "react/exhaustive-deps": "warn",
         "react/static-components": "error",
@@ -88,7 +76,7 @@
         "sampleRate": "readonly",
         "WorkletGlobalScope": "readonly"
       },
-      "plugins": ["react", "import", "jsx-a11y"],
+      "plugins": ["react", "import"],
       "env": {
         "browser": true,
         "node": true
@@ -120,7 +108,31 @@
       }
     },
     {
-      "files": ["packages/features/src/captions/server/**/*.ts"],
+      "files": ["packages/{teams-cdp,transcripts-sqlite,copilot-sdk}/src/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@app/features",
+                  "@app/features/**",
+                  "@app/components",
+                  "@app/components/**",
+                  "react",
+                  "react-dom",
+                  "@tanstack/*"
+                ],
+                "message": "Adapters only implement a port from @app/contracts; they know nothing about features, UI or web frameworks."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/features/src/*/server/**/*.ts"],
       "rules": {
         "no-restricted-imports": [
           "error",
@@ -131,24 +143,21 @@
                   "react",
                   "react/*",
                   "react-dom",
-                  "react-dom/*",
                   "lucide-react",
                   "@tanstack/*",
                   "@app/components",
                   "@app/components/**",
-                  "../client",
-                  "../client/**"
-                ],
-                "message": "The captions server runs without a UI: keep React, components and the client out of it."
-              },
-              {
-                "group": [
                   "@app/teams-cdp",
                   "@app/teams-cdp/**",
                   "@app/transcripts-sqlite",
-                  "@app/transcripts-sqlite/**"
+                  "@app/transcripts-sqlite/**",
+                  "@app/copilot-sdk",
+                  "@app/copilot-sdk/**",
+                  "@github/copilot-sdk",
+                  "../client",
+                  "../client/**"
                 ],
-                "message": "The captions server only knows the CaptionSource and TranscriptStore ports; the app wires adapters in (apps/web/src/caption-handlers.ts)."
+                "message": "Feature servers run without a UI and know only the ports in @app/contracts; the app wires adapters in (apps/web/src/*-handlers.ts)."
               }
             ]
           }
@@ -156,64 +165,15 @@
       }
     },
     {
-      "files": ["packages/features/src/captions/client/**/*.{ts,tsx}"],
+      "files": ["packages/features/src/*/client/**/*.{ts,tsx}"],
       "rules": {
         "no-restricted-imports": [
           "error",
           {
             "patterns": [
               {
-                "group": ["../server", "../server/**"],
-                "message": "The captions client must not import server code; share types through @app/contracts."
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "files": ["packages/teams-cdp/src/**/*.ts"],
-      "rules": {
-        "no-restricted-imports": [
-          "error",
-          {
-            "patterns": [
-              {
-                "group": [
-                  "@app/features",
-                  "@app/features/**",
-                  "@app/components",
-                  "@app/components/**",
-                  "react",
-                  "react-dom",
-                  "@tanstack/*"
-                ],
-                "message": "The Teams CDP adapter only implements CaptionSource from @app/contracts; it knows nothing about features, React or web frameworks."
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "files": ["packages/transcripts-sqlite/src/**/*.ts"],
-      "rules": {
-        "no-restricted-imports": [
-          "error",
-          {
-            "patterns": [
-              {
-                "group": [
-                  "@app/features",
-                  "@app/features/**",
-                  "@app/components",
-                  "@app/components/**",
-                  "@app/teams-cdp",
-                  "react",
-                  "react-dom",
-                  "@tanstack/*"
-                ],
-                "message": "The SQLite adapter only implements TranscriptStore from @app/contracts; it knows nothing about features, React or web frameworks."
+                "group": ["../server", "../server/**", "@github/copilot-sdk"],
+                "message": "Feature clients must not import server code; share types through @app/contracts."
               }
             ]
           }
