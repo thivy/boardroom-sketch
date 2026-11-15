@@ -6,7 +6,7 @@
     <style>
       body {
         margin: 0;
-        height: 100vh;
+        min-height: 100vh;
         display: grid;
         place-items: center;
         font:
@@ -15,9 +15,67 @@
         background: #0a0a0a;
         color: #a3a3a3;
       }
+      main {
+        width: min(720px, 100% - 48px);
+      }
+      h1 {
+        margin: 0 0 12px;
+        font-size: 16px;
+        color: #f5f5f5;
+      }
+      .failed h1 {
+        color: #f87171;
+      }
+      pre {
+        margin: 0 0 16px;
+        max-height: 50vh;
+        overflow: auto;
+        padding: 12px;
+        border-radius: 8px;
+        background: #171717;
+        color: #d4d4d4;
+        font:
+          12px ui-monospace,
+          Consolas,
+          monospace;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      button {
+        padding: 6px 14px;
+        border: 1px solid #404040;
+        border-radius: 8px;
+        background: #171717;
+        color: #f5f5f5;
+        font: inherit;
+        cursor: pointer;
+      }
+      [hidden] {
+        display: none;
+      }
     </style>
   </head>
   <body>
-    Starting Boardroom Sketch…
+    <main id="status">
+      <h1 id="title">Starting Boardroom Sketch…</h1>
+      <pre id="detail" hidden></pre>
+      <button id="copy" hidden>Copy details</button>
+    </main>
+    <script>
+      // The desktop shell calls this when the server cannot start, so the reason is on screen.
+      window.__showStartupError = ({ title, detail }) => {
+        document.getElementById("status").className = "failed";
+        document.getElementById("title").textContent = title;
+        const pre = document.getElementById("detail");
+        pre.textContent = detail;
+        pre.hidden = false;
+        const copy = document.getElementById("copy");
+        copy.hidden = false;
+        copy.onclick = () => {
+          navigator.clipboard.writeText(`${title}\n\n${detail}`);
+          copy.textContent = "Copied";
+        };
+      };
+    </script>
   </body>
 </html>

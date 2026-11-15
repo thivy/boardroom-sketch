@@ -1,11 +1,15 @@
+use std::fs::{self, OpenOptions};
+use std::io::Write;
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use tauri::{Manager, RunEvent};
-use tauri_plugin_shell::process::CommandChild;
+use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
+
+const START_TIMEOUT: Duration = Duration::from_secs(90);
 
 /// The Node process that serves the app; stopped when the app exits.
 struct Server(Mutex<Option<CommandChild>>);
@@ -17,16 +21,9 @@ fn free_port() -> u16 {
         .expect("no free local port")
 }
 
-fn wait_until_listening(port: u16) -> bool {
+fn is_listening(port: u16) -> bool {
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
-    let deadline = Instant::now() + Duration::from_secs(30);
-    while Instant::now() < deadline {
-        if TcpStream::connect_timeout(&addr, Duration::from_millis(300)).is_ok() {
-            return true;
-        }
-        std::thread::sleep(Duration::from_millis(150));
-    }
-    false
+    TcpStream::connect_timeout(&addr, Duration::from_millis(300)).is_ok()
 }
 
 /// A bundle has the server as a resource; in development it is the copy `prepare-sidecar` made.
@@ -41,32 +38,126 @@ fn server_entry(app: &tauri::AppHandle) -> PathBuf {
     }
 }
 
+/// Replaces the loading page's content, so a failure is on screen instead of an endless "Starting…".
+/// It repeats for a moment, because the loading page may not have finished loading yet.
+fn show(window: &tauri::WebviewWindow, title: &str, detail: &str) {
+    let payload = serde_json::json!({ "title": title, "detail": detail });
+    let script = format!("window.__showStartupError && window.__showStartupError({payload})");
+    let window = window.clone();
+    std::thread::spawn(move || {
+        for delay in [0, 500, 1500, 3000] {
+            std::thread::sleep(Duration::from_millis(delay));
+            let _ = window.eval(script.clone());
+        }
+    });
+}
+
+/// The last lines the server printed, which usually name the cause.
+fn tail(lines: &[String]) -> String {
+    let start = lines.len().saturating_sub(30);
+    lines[start..].join("\n")
+}
+
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
+            let window = app.get_webview_window("main").expect("main window");
             let port = free_port();
-            // Transcripts live in the app's data folder, not wherever the app was started from.
-            let database = app.path().app_data_dir()?.join("transcripts.db");
 
-            let (_events, child) = app
+            // Transcripts and the server log live in the app's data folder.
+            let data = app.path().app_data_dir()?;
+            fs::create_dir_all(&data)?;
+            let log_path = data.join("server.log");
+            let entry = server_entry(app.handle());
+
+            let spawned = app
                 .shell()
-                .sidecar("node")?
-                .args([server_entry(app.handle())])
-                .env("PORT", port.to_string())
-                .env("HOST", "127.0.0.1")
-                .env("TRANSCRIPTS_DB", database)
-                .spawn()?;
+                .sidecar("node")
+                .map_err(|error| format!("The bundled Node runtime was not found: {error}"))
+                .and_then(|command| {
+                    command
+                        .args([entry.clone()])
+                        .env("PORT", port.to_string())
+                        .env("HOST", "127.0.0.1")
+                        .env("TRANSCRIPTS_DB", data.join("transcripts.db"))
+                        .spawn()
+                        .map_err(|error| format!("The server could not be launched: {error}"))
+                });
+
+            let (mut events, child) = match spawned {
+                Ok(started) => started,
+                Err(error) => {
+                    show(
+                        &window,
+                        "Boardroom Sketch could not start its server.",
+                        &format!("{error}\n\nServer file: {}\nLog: {}", entry.display(), log_path.display()),
+                    );
+                    return Ok(());
+                }
+            };
             app.manage(Server(Mutex::new(Some(child))));
 
-            let window = app.get_webview_window("main").expect("main window");
+            // Everything the server prints goes to the log file, and is kept to show if it fails.
+            let output = Arc::new(Mutex::new(Vec::<String>::new()));
+            let stopped = Arc::new(Mutex::new(None::<String>));
+            {
+                let (output, stopped) = (output.clone(), stopped.clone());
+                let mut log = OpenOptions::new()
+                    .create(true)
+                    .write(true)
+                    .truncate(true)
+                    .open(&log_path)
+                    .ok();
+                tauri::async_runtime::spawn(async move {
+                    while let Some(event) = events.recv().await {
+                        let line = match event {
+                            CommandEvent::Stdout(bytes) | CommandEvent::Stderr(bytes) => {
+                                String::from_utf8_lossy(&bytes).trim_end().to_string()
+                            }
+                            CommandEvent::Error(error) => format!("error: {error}"),
+                            CommandEvent::Terminated(payload) => {
+                                *stopped.lock().unwrap() =
+                                    Some(format!("The server stopped (exit code {:?}).", payload.code));
+                                continue;
+                            }
+                            _ => continue,
+                        };
+                        if let Some(file) = log.as_mut() {
+                            let _ = writeln!(file, "{line}");
+                        }
+                        output.lock().unwrap().push(line);
+                    }
+                });
+            }
+
             std::thread::spawn(move || {
-                if wait_until_listening(port) {
-                    let url = format!("http://127.0.0.1:{port}");
-                    let _ = window.navigate(url.parse().expect("local url"));
+                let deadline = Instant::now() + START_TIMEOUT;
+                while Instant::now() < deadline {
+                    if is_listening(port) {
+                        let url = format!("http://127.0.0.1:{port}");
+                        let _ = window.navigate(url.parse().expect("local url"));
+                        return;
+                    }
+                    if let Some(reason) = stopped.lock().unwrap().clone() {
+                        let lines = output.lock().unwrap().clone();
+                        show(
+                            &window,
+                            &format!("Boardroom Sketch could not start. {reason}"),
+                            &format!("{}\n\nLog: {}", tail(&lines), log_path.display()),
+                        );
+                        return;
+                    }
+                    std::thread::sleep(Duration::from_millis(200));
                 }
+                let lines = output.lock().unwrap().clone();
+                show(
+                    &window,
+                    "Boardroom Sketch is taking too long to start.",
+                    &format!("{}\n\nLog: {}", tail(&lines), log_path.display()),
+                );
             });
             Ok(())
         })
