@@ -32,9 +32,18 @@ fn server_entry(app: &tauri::AppHandle) -> PathBuf {
         .path()
         .resource_dir()
         .map(|dir| dir.join("server").join("server").join("index.mjs"));
-    match bundled {
+    let path = match bundled {
         Ok(path) if path.exists() => path,
         _ => PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("server/server/index.mjs"),
+    };
+    plain_path(path)
+}
+
+/// Windows resource paths come back as `\\?\C:\...`; Node 22 cannot resolve a script path in that form.
+fn plain_path(path: PathBuf) -> PathBuf {
+    match path.to_string_lossy().strip_prefix(r"\\?\") {
+        Some(rest) if !rest.starts_with("UNC") => PathBuf::from(rest),
+        _ => path,
     }
 }
 
