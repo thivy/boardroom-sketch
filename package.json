@@ -28,7 +28,8 @@
     "typecheck": "bun run --filter '*' typecheck",
     "test": "bun test",
     "desktop:dev": "bun run --cwd apps/desktop dev",
-    "desktop:build": "bun run --cwd apps/desktop build"
+    "desktop:build": "bun run --cwd apps/desktop build",
+    "desktop:release": "bun run --cwd apps/desktop build:release"
   },
   "dependencies": {
     "@github/copilot-sdk": "^1.0.32"

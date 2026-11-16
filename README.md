@@ -56,7 +56,8 @@ Needs [Rust](https://rustup.rs) and, on Windows, the Visual Studio C++ Build Too
 
 ```bash
 bun run desktop:dev     # builds the web app, prepares the sidecar, opens the window
-bun run desktop:build   # produces an installer under apps/desktop/src-tauri/target/release/bundle
+bun run desktop:build   # unsigned local installer under apps/desktop/src-tauri/target/release/bundle
+bun run desktop:release # also signs the update packages; needs TAURI_SIGNING_PRIVATE_KEY (CI sets it)
 ```
 
 Dev runs the production server build, so run `desktop:dev` again after changing web code; use `bun run dev` for hot reload in a browser.
