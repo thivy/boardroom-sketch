@@ -108,7 +108,7 @@
       }
     },
     {
-      "files": ["packages/{teams-cdp,transcripts-sqlite,copilot-sdk}/src/**/*.ts"],
+      "files": ["packages/{teams-cdp,storage-sqlite,copilot-sdk}/src/**/*.ts"],
       "rules": {
         "no-restricted-imports": [
           "error",
@@ -149,8 +149,8 @@
                   "@app/components/**",
                   "@app/teams-cdp",
                   "@app/teams-cdp/**",
-                  "@app/transcripts-sqlite",
-                  "@app/transcripts-sqlite/**",
+                  "@app/storage-sqlite",
+                  "@app/storage-sqlite/**",
                   "@app/copilot-sdk",
                   "@app/copilot-sdk/**",
                   "@github/copilot-sdk",

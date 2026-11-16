@@ -32,8 +32,8 @@
         "@app/contracts": "workspace:*",
         "@app/copilot-sdk": "workspace:*",
         "@app/features": "workspace:*",
+        "@app/storage-sqlite": "workspace:*",
         "@app/teams-cdp": "workspace:*",
-        "@app/transcripts-sqlite": "workspace:*",
         "@github/copilot-sdk": "^1.0.32",
         "@tanstack/react-query": "^5.105.0",
         "@tanstack/react-router": "^1.170.46",
@@ -98,15 +98,15 @@
         "react-dom": "^19",
       },
     },
-    "packages/teams-cdp": {
-      "name": "@app/teams-cdp",
+    "packages/storage-sqlite": {
+      "name": "@app/storage-sqlite",
       "version": "0.0.0",
       "dependencies": {
         "@app/contracts": "workspace:*",
       },
     },
-    "packages/transcripts-sqlite": {
-      "name": "@app/transcripts-sqlite",
+    "packages/teams-cdp": {
+      "name": "@app/teams-cdp",
       "version": "0.0.0",
       "dependencies": {
         "@app/contracts": "workspace:*",
@@ -122,9 +122,9 @@
 
     "@app/features": ["@app/features@workspace:packages/features"],
 
-    "@app/teams-cdp": ["@app/teams-cdp@workspace:packages/teams-cdp"],
+    "@app/storage-sqlite": ["@app/storage-sqlite@workspace:packages/storage-sqlite"],
 
-    "@app/transcripts-sqlite": ["@app/transcripts-sqlite@workspace:packages/transcripts-sqlite"],
+    "@app/teams-cdp": ["@app/teams-cdp@workspace:packages/teams-cdp"],
 
     "@babel/code-frame": ["@babel/code-frame@7.29.7", "https://packagefeedproxy.microsoft.io/npm/@babel/code-frame/-/code-frame-7.29.7.tgz", { "dependencies": { "@babel/helper-validator-identifier": "^7.29.7", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha1-8vu/6ofESiFZDsUVt3iywm2IZuc="],
 

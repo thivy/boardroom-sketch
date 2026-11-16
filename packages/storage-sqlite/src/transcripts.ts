@@ -6,15 +6,9 @@ import type {
   StoredSession,
   TranscriptStore,
 } from "@app/contracts";
-import { mkdirSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { DatabaseSync } from "node:sqlite";
-import { migrate } from "./schema";
-
-export type SqliteOptions = {
-  /** The database file. Defaults to `TRANSCRIPTS_DB`, then `./data/transcripts.db`. */
-  path?: string;
-};
+import type { DatabaseSync } from "node:sqlite";
+import { migrate } from "./database";
+import { transcriptsMigration } from "./transcripts-schema";
 
 type SessionRow = {
   id: number;
@@ -39,14 +33,9 @@ const toSession = (row: SessionRow): StoredSession => ({
 /** Captions without a speaker id are keyed by name, so one person stays one speaker. */
 const speakerKey = ({ speakerId, speaker }: Caption) => speakerId || `name:${speaker}`;
 
-/** Stores transcripts in a SQLite file through Node's built-in `node:sqlite`. */
-export function transcriptsSqlite({
-  path = process.env.TRANSCRIPTS_DB || "./data/transcripts.db",
-}: SqliteOptions = {}): TranscriptStore {
-  const file = resolve(path);
-  mkdirSync(dirname(file), { recursive: true });
-  const db = new DatabaseSync(file);
-  migrate(db);
+/** Keeps transcripts in the shared database (see `openDatabase`). */
+export function transcriptsSqlite(db: DatabaseSync): TranscriptStore {
+  migrate(db, transcriptsMigration);
 
   // A crash or a killed server leaves sessions open; end them at their last caption.
   db.exec(`

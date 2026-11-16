@@ -25,7 +25,7 @@ export type SessionTranscript = {
 
 /**
  * Where transcripts are kept. The captions feature depends only on this port; an adapter
- * (today `@app/transcripts-sqlite`) implements it.
+ * (today `@app/storage-sqlite`) implements it.
  */
 export interface TranscriptStore {
   /** Starts a session; the meeting is created or its title refreshed. */
