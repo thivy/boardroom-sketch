@@ -84,7 +84,7 @@ How it fits together:
 - Updates only reach apps built with the public key and an updater-enabled version, so the first release with this feature has to be installed by hand; later tags update it.
 - The window loads the app from `127.0.0.1`, so `capabilities/default.json` lets that origin (only) use the updater and restart. The banner is `packages/features/src/updates`.
 
-Release steps: `git tag v0.2.0 && git push origin v0.2.0`.
+Release steps: run the **Release** workflow (Actions → _Release_ → _Run workflow_, on `main`) and choose `patch`, `minor` or `major`. It finds the latest `vX.Y.Z` tag (the first release is `v0.1.0`), tags the current commit with the next one and starts the **Desktop app** workflow on it, which builds and publishes the release. Pushing a tag by hand (`git tag v0.2.0 && git push origin v0.2.0`) works too.
 
 The builds are not code-signed, so Windows SmartScreen and macOS Gatekeeper warn on first run. The installer version comes from `apps/desktop/src-tauri/tauri.conf.json`, not the tag.
 
