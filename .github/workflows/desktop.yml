@@ -100,5 +100,4 @@ jobs:
         with:
           files: |
             installers/**/*
-            installers/latest.json
           generate_release_notes: true
