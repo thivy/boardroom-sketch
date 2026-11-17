@@ -48,7 +48,7 @@ The SDK is not bundled into the server build: it finds its runtime in a platform
 
 ## Meeting graph (experimental)
 
-A recorded meeting can also be turned into a graph of what was meant: decisions, actions, questions, risks and claims, the links between them and the quotes behind each. It is **off by default** because it asks a model about the meeting as it happens, which counts against the signed-in Copilot account. Set `GRAPH_PIPELINE=on` to follow every recording. Set `COPILOT_FAST_MODEL` and `COPILOT_SMART_MODEL` to choose the models (otherwise the first usable of a short preference list is used) and `COPILOT_FAST_EFFORT` / `COPILOT_SMART_EFFORT` for how hard they think (default `none`, which is fastest). There is no screen for it yet: read it at `GET /api/graph?meeting=<id>`. See [docs/graph-model.md](docs/graph-model.md) and [docs/graph-pipeline.md](docs/graph-pipeline.md).
+A recorded meeting can also be turned into a graph of what was meant: decisions, actions, questions, risks and claims, the links between them and the quotes behind each. It is **off by default** because it asks a model about the meeting as it happens, which counts against the signed-in Copilot account. Set `GRAPH_PIPELINE=on` to follow every recording. Set `COPILOT_FAST_MODEL` and `COPILOT_SMART_MODEL` to choose the models (otherwise the first usable of a short preference list is used) and `COPILOT_FAST_EFFORT` / `COPILOT_SMART_EFFORT` for how hard they think (default `none`, which is fastest). Watch it build live on the **Meeting graph** page (`/graph`), or read it at `GET /api/graph?meeting=<id>`. See [docs/graph-model.md](docs/graph-model.md) and [docs/graph-pipeline.md](docs/graph-pipeline.md).
 
 ## Desktop app (Tauri)
 

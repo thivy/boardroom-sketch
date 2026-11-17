@@ -44,6 +44,25 @@
 @theme {
   --animate-rise: rise 220ms ease-out;
   --animate-pulse-soft: pulse-soft 1.2s ease-in-out infinite;
+  --animate-ring: ring 1.6s ease-out 4;
+
+  @keyframes node-pop {
+    from {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+  }
+
+  @keyframes ring {
+    from {
+      opacity: 0.9;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(2.6);
+    }
+  }
 
   @keyframes rise {
     from {

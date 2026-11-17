@@ -11,7 +11,7 @@ import {
 } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getCookie } from "@tanstack/react-start/server";
-import { CaptionsIcon, FileTextIcon, MessageSquareIcon } from "lucide-react";
+import { CaptionsIcon, FileTextIcon, MessageSquareIcon, NetworkIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import appCss from "../styles.css?url";
 
@@ -47,6 +47,7 @@ function RootComponent() {
         navItems={[
           { label: "Teams captions", icon: CaptionsIcon, link: <Link to="/captions" /> },
           { label: "Transcripts", icon: FileTextIcon, link: <Link to="/transcripts" /> },
+          { label: "Meeting graph", icon: NetworkIcon, link: <Link to="/graph" /> },
           { label: "Analysis chat", icon: MessageSquareIcon, link: <Link to="/chat" /> },
         ]}
       >
