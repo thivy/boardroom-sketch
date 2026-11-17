@@ -22,6 +22,7 @@ import { Route as ApiCaptionsPrepareRouteImport } from './routes/api/captions.pr
 import { Route as ApiCaptionsRecordingsRouteImport } from './routes/api/captions.recordings'
 import { Route as ApiCaptionsStreamRouteImport } from './routes/api/captions.stream'
 import { Route as ApiChatStatusRouteImport } from './routes/api/chat.status'
+import { Route as ApiGraphBuildRouteImport } from './routes/api/graph.build'
 import { Route as ApiGraphEventsRouteImport } from './routes/api/graph.events'
 import { Route as ApiGraphHistoryRouteImport } from './routes/api/graph.history'
 import { Route as ApiTranscriptsExportRouteImport } from './routes/api/transcripts.export'
@@ -92,6 +93,11 @@ const ApiChatStatusRoute = ApiChatStatusRouteImport.update({
   path: '/status',
   getParentRoute: () => ApiChatRoute,
 } as any)
+const ApiGraphBuildRoute = ApiGraphBuildRouteImport.update({
+  id: '/build',
+  path: '/build',
+  getParentRoute: () => ApiGraphRoute,
+} as any)
 const ApiGraphEventsRoute = ApiGraphEventsRouteImport.update({
   id: '/events',
   path: '/events',
@@ -127,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/api/captions/recordings': typeof ApiCaptionsRecordingsRoute
   '/api/captions/stream': typeof ApiCaptionsStreamRoute
   '/api/chat/status': typeof ApiChatStatusRoute
+  '/api/graph/build': typeof ApiGraphBuildRoute
   '/api/graph/events': typeof ApiGraphEventsRoute
   '/api/graph/history': typeof ApiGraphHistoryRoute
   '/api/transcripts/export': typeof ApiTranscriptsExportRoute
@@ -146,6 +153,7 @@ export interface FileRoutesByTo {
   '/api/captions/recordings': typeof ApiCaptionsRecordingsRoute
   '/api/captions/stream': typeof ApiCaptionsStreamRoute
   '/api/chat/status': typeof ApiChatStatusRoute
+  '/api/graph/build': typeof ApiGraphBuildRoute
   '/api/graph/events': typeof ApiGraphEventsRoute
   '/api/graph/history': typeof ApiGraphHistoryRoute
   '/api/transcripts/export': typeof ApiTranscriptsExportRoute
@@ -166,6 +174,7 @@ export interface FileRoutesById {
   '/api/captions/recordings': typeof ApiCaptionsRecordingsRoute
   '/api/captions/stream': typeof ApiCaptionsStreamRoute
   '/api/chat/status': typeof ApiChatStatusRoute
+  '/api/graph/build': typeof ApiGraphBuildRoute
   '/api/graph/events': typeof ApiGraphEventsRoute
   '/api/graph/history': typeof ApiGraphHistoryRoute
   '/api/transcripts/export': typeof ApiTranscriptsExportRoute
@@ -187,6 +196,7 @@ export interface FileRouteTypes {
     | '/api/captions/recordings'
     | '/api/captions/stream'
     | '/api/chat/status'
+    | '/api/graph/build'
     | '/api/graph/events'
     | '/api/graph/history'
     | '/api/transcripts/export'
@@ -206,6 +216,7 @@ export interface FileRouteTypes {
     | '/api/captions/recordings'
     | '/api/captions/stream'
     | '/api/chat/status'
+    | '/api/graph/build'
     | '/api/graph/events'
     | '/api/graph/history'
     | '/api/transcripts/export'
@@ -225,6 +236,7 @@ export interface FileRouteTypes {
     | '/api/captions/recordings'
     | '/api/captions/stream'
     | '/api/chat/status'
+    | '/api/graph/build'
     | '/api/graph/events'
     | '/api/graph/history'
     | '/api/transcripts/export'
@@ -339,6 +351,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatStatusRouteImport
       parentRoute: typeof ApiChatRoute
     }
+    '/api/graph/build': {
+      id: '/api/graph/build'
+      path: '/build'
+      fullPath: '/api/graph/build'
+      preLoaderRoute: typeof ApiGraphBuildRouteImport
+      parentRoute: typeof ApiGraphRoute
+    }
     '/api/graph/events': {
       id: '/api/graph/events'
       path: '/events'
@@ -382,11 +401,13 @@ const ApiChatRouteWithChildren =
   ApiChatRoute._addFileChildren(ApiChatRouteChildren)
 
 interface ApiGraphRouteChildren {
+  ApiGraphBuildRoute: typeof ApiGraphBuildRoute
   ApiGraphEventsRoute: typeof ApiGraphEventsRoute
   ApiGraphHistoryRoute: typeof ApiGraphHistoryRoute
 }
 
 const ApiGraphRouteChildren: ApiGraphRouteChildren = {
+  ApiGraphBuildRoute: ApiGraphBuildRoute,
   ApiGraphEventsRoute: ApiGraphEventsRoute,
   ApiGraphHistoryRoute: ApiGraphHistoryRoute,
 }

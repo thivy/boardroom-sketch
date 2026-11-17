@@ -64,6 +64,8 @@ export type {
   DeleteNodeInput,
   Evidence,
   EvidenceInput,
+  GraphBuildState,
+  GraphBuildStatus,
   GraphCommand,
   GraphCut,
   GraphEdge,

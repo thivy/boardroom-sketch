@@ -63,6 +63,29 @@ It answers `{ changes: [...] }` in a strict schema: `add_node`, `add_edge`, `set
 A failed call retries once, then the turns are dropped and the failure logged. A recording is capped at
 400 model calls.
 
+## Generating a graph from a saved transcript
+
+The **Generate graph** button on the Transcripts page builds the graph for a transcript that is already in
+the database. It does not need `GRAPH_PIPELINE`; it runs only when pressed, and counts against the
+signed-in Copilot account like any other call.
+
+- The transcript is cut into turns (runs of lines by one speaker, at most about 1,200 characters each),
+  then read in order in batches of up to 8 turns or 6,000 characters, through the same Extract step as the
+  live pipeline. There is **no Triage**: with nobody waiting it would cost one call per turn to save a
+  fraction of the extraction calls. A transcript of about 10 turns takes two calls and about half a
+  minute; a one-hour meeting is a few dozen calls and some minutes.
+- Batches run one after another (each one sees what the last added), so the graph fills in as it goes.
+  The button shows progress and has **Watch** (opens the graph page on that meeting) and **Stop**.
+- A meeting has **one graph**. Building again replaces it, after the button asks; the old graph and its
+  history are deleted first, so stopping part way leaves a partial or empty graph.
+- Refused with a clear message: a recording still in progress, a build already running for the meeting, an
+  empty transcript, or one needing more than 300 calls. A batch that fails twice is skipped and counted;
+  three in a row end the build.
+- API: `POST /api/graph/build { sessionId, replace? }` (409 `graph_exists` when the meeting has a graph
+  and `replace` is not set), `GET /api/graph/build?session=<id>&meeting=<id>` for progress, and
+  `DELETE /api/graph/build?session=<id>` to stop. Progress is held in memory, so it is lost when the
+  server restarts.
+
 ## Models
 
 Each call is a new session with no tools. The adapter picks a model per tier (`fast` for Triage, `smart`
@@ -105,6 +128,9 @@ the effort: that is the fixed price of a session through the Copilot SDK. Extrac
 - Few edges: the model mostly creates nodes. A late "let's not finalise the twelfth until..." became its
   own node instead of challenging the decision. Connect is meant to find these.
 - The model invents a question now and then from a statement of intent.
+- Duplicates across batches: when a later batch restates something, the model sometimes makes a second
+  node instead of updating the first (for example two "find out who approves the budget" actions after
+  "Priya, can you find out?" and "Sure, I'll find out by Friday"). Merging duplicates is Connect's job.
 - Nothing shows the graph yet. Read it at `GET /api/graph?meeting=<id>` (add `asOfOp=<n>` or
   `asOfTime=<ms>` for an earlier moment), a node's history at `/api/graph/history?node=<id>`, and the
   pipeline log at `/api/graph/events?meeting=<id>[&kind=triage|extract|rejection|error]`.

@@ -36,9 +36,9 @@ function Placeholder({ title, children }: { title: string; children: React.React
   );
 }
 
-export function GraphPage() {
+export function GraphPage({ meeting: initialMeeting }: { meeting?: string } = {}) {
   const { meetings, loading } = useMeetings();
-  const [chosen, setChosen] = useState<string>();
+  const [chosen, setChosen] = useState<string | undefined>(initialMeeting);
   const [selectedId, setSelectedId] = useState<string>();
   const [hiddenTypes, setHiddenTypes] = useState<ReadonlySet<NodeType>>(new Set());
   const [query, setQuery] = useState("");

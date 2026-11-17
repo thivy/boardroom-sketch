@@ -4,14 +4,69 @@ import {
   type PipelineEventKind,
   type PipelineLog,
 } from "@app/contracts";
+import { BuildError, type GraphBuilder } from "./build";
 
 const json = (body: unknown, status = 200) => Response.json(body, { status });
 const param = (request: Request, name: string) => new URL(request.url).searchParams.get(name);
 const KINDS: PipelineEventKind[] = ["triage", "extract", "rejection", "error"];
 
-/** The graph endpoints, as plain `(Request) => Response` handlers over a `GraphStore` and a `PipelineLog`. */
-export function createGraphHandlers(graph: GraphStore, log: PipelineLog) {
+// A JSON body cannot be sent cross-site without a CORS preflight, so other pages cannot start a build.
+const isJson = (request: Request) =>
+  request.headers.get("content-type")?.includes("application/json") ?? false;
+
+const sessionParam = (request: Request) => {
+  const value = Number(param(request, "session"));
+  return Number.isInteger(value) && value > 0 ? value : undefined;
+};
+
+/**
+ * The graph endpoints, as plain `(Request) => Response` handlers over a `GraphStore`, a `PipelineLog`
+ * and a `GraphBuilder`.
+ */
+export function createGraphHandlers(graph: GraphStore, log: PipelineLog, builder: GraphBuilder) {
   return {
+    /** `GET ?session=<id>&meeting=<id>`: where building the graph from that transcript is. */
+    async buildStatus(request: Request): Promise<Response> {
+      const session = sessionParam(request);
+      const meeting = param(request, "meeting");
+      if (session === undefined || !meeting)
+        return json({ error: "Missing session or meeting" }, 400);
+      return json(await builder.status(session, meeting));
+    },
+
+    /**
+     * `POST { sessionId, replace? }`: starts building the graph from a saved transcript. Answers 409 with
+     * code `graph_exists` when the meeting already has a graph and `replace` was not set.
+     */
+    async buildStart(request: Request): Promise<Response> {
+      if (!isJson(request)) return json({ error: "Expected application/json" }, 415);
+      const body = (await request.json().catch(() => ({}))) as {
+        sessionId?: unknown;
+        replace?: unknown;
+      };
+      if (!Number.isInteger(body.sessionId) || (body.sessionId as number) <= 0) {
+        return json({ error: "Missing sessionId" }, 400);
+      }
+      try {
+        const status = await builder.start(body.sessionId as number, {
+          replace: body.replace === true,
+        });
+        return json(status, 202);
+      } catch (error) {
+        if (error instanceof BuildError) {
+          return json({ error: error.message, code: error.code }, error.status);
+        }
+        throw error;
+      }
+    },
+
+    /** `DELETE ?session=<id>`: stops a running build; what was built so far is kept. */
+    buildCancel(request: Request): Response {
+      const session = sessionParam(request);
+      if (session === undefined) return json({ error: "Missing session" }, 400);
+      return builder.cancel(session) ? json({}) : json({ error: "No build is running" }, 404);
+    },
+
     /**
      * `GET ?meeting=<id>`: the meeting's graph. Add `asOfOp=<n>` or `asOfTime=<epoch ms>` to see it as
      * it stood then.

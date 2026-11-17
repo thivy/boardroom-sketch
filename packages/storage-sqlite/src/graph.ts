@@ -297,6 +297,11 @@ export function graphSqlite(
       SELECT 1 FROM graph_ops o JOIN graph_evidence v ON v.op_id = o.id
       WHERE o.node_id = graph_nodes.id
          OR o.node_id IN (SELECT m.id FROM graph_nodes m WHERE m.merged_into = graph_nodes.id))`);
+  const countLiveNodes = db.prepare(
+    "SELECT COUNT(*) AS n FROM graph_nodes WHERE meeting_id = ? AND merged_into IS NULL AND deleted_at IS NULL",
+  );
+  const clearOps = db.prepare("DELETE FROM graph_ops WHERE meeting_id = ?");
+  const clearNodes = db.prepare("DELETE FROM graph_nodes WHERE meeting_id = ?");
 
   let lastOpId = 0;
   /** When the command being run happened, so every row it writes carries the same time. */
@@ -1173,6 +1178,15 @@ export function graphSqlite(
       return transaction(() => {
         pruneEdges.run(meetingId);
         return Number(pruneNodes.run(meetingId).changes);
+      });
+    },
+
+    async clearGraph(meetingId) {
+      return transaction(() => {
+        const live = (countLiveNodes.get(meetingId) as { n: number }).n;
+        clearOps.run(meetingId);
+        clearNodes.run(meetingId);
+        return live;
       });
     },
   };

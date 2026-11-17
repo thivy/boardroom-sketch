@@ -33,6 +33,45 @@ const speakerKey = ({ speakerId, speaker }: Pick<Caption, "speakerId" | "speaker
   speakerId || `name:${speaker}`;
 
 /**
+ * The turns of a transcript that is already complete: runs of lines by one speaker, cut where another
+ * speaker starts, or after about `maxChars` of text so that a monologue does not become one huge turn.
+ * (Nothing is live here, so there is no silence to wait for.)
+ */
+export function turnsFromCaptions(
+  sessionId: number,
+  captions: readonly Caption[],
+  { maxChars = 1_200 }: { maxChars?: number } = {},
+): Turn[] {
+  const turns: Turn[] = [];
+  let open: Turn | undefined;
+  let who = "";
+  let chars = 0;
+  for (const caption of captions) {
+    const text = caption.text.trim();
+    if (!text) continue;
+    const key = speakerKey(caption);
+    if (!open || key !== who || chars + text.length > maxChars) {
+      open = {
+        id: `${sessionId}:${caption.id}`,
+        sessionId,
+        speakerId: caption.speakerId,
+        speaker: caption.speaker,
+        lines: [],
+        startedAt: caption.at,
+        endedAt: caption.at,
+      };
+      turns.push(open);
+      who = key;
+      chars = 0;
+    }
+    open.lines.push({ id: caption.id, text });
+    open.endedAt = caption.at;
+    chars += text.length;
+  }
+  return turns;
+}
+
+/**
  * Turns caption lines into finished turns. Teams keeps rewriting a line while it is spoken and gives
  * no sign that a person has finished, so a turn ends when someone else starts or after a pause. Only
  * finished turns go on to the pipeline, and a line already handed on is never handed on again.

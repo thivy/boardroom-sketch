@@ -10,11 +10,14 @@ import {
 import { Button, buttonVariants } from "@app/components/components/button";
 import { Empty, EmptyDescription, EmptyHeader } from "@app/components/components/empty";
 import { cn } from "@app/components/lib/utils";
-import type { SessionTranscript, StoredMeeting, StoredSession } from "@app/contracts";
+import type { Meeting, SessionTranscript, StoredMeeting, StoredSession } from "@app/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DownloadIcon, LoaderCircleIcon, Trash2Icon } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { AppHeader } from "../../app-header";
+
+/** What the page offers on a session besides export and delete; the app decides what goes here. */
+export type SessionActions = (context: { session: StoredSession; meeting: Meeting }) => ReactNode;
 
 const stamp = (at: number) => new Date(at).toLocaleString();
 const time = (at: number) => new Date(at).toLocaleTimeString();
@@ -33,7 +36,15 @@ function sessionLabel({ startedAt, endedAt, captionCount }: StoredSession) {
   return `${range} · ${captionCount} lines`;
 }
 
-function Detail({ sessionId, onDelete }: { sessionId: number; onDelete: () => void }) {
+function Detail({
+  sessionId,
+  onDelete,
+  actions,
+}: {
+  sessionId: number;
+  onDelete: () => void;
+  actions?: SessionActions;
+}) {
   const transcript = useQuery({
     queryKey: ["transcripts", "session", sessionId],
     queryFn: () => request<SessionTranscript>(`/api/transcripts/session?session=${sessionId}`),
@@ -61,7 +72,8 @@ function Detail({ sessionId, onDelete }: { sessionId: number; onDelete: () => vo
           <div className="truncate text-sm font-[560]">{meeting.title}</div>
           <div className="text-xs text-muted-foreground">{sessionLabel(session)}</div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
+          {actions?.({ session, meeting })}
           {(["txt", "md", "json"] as const).map((format) => (
             <a
               key={format}
@@ -106,7 +118,7 @@ function Detail({ sessionId, onDelete }: { sessionId: number; onDelete: () => vo
   );
 }
 
-export function TranscriptsPage() {
+export function TranscriptsPage({ actions }: { actions?: SessionActions } = {}) {
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<number>();
   const [deleting, setDeleting] = useState<StoredSession>();
@@ -182,6 +194,7 @@ export function TranscriptsPage() {
               <Detail
                 key={selected}
                 sessionId={selected}
+                actions={actions}
                 onDelete={() => {
                   const session = meetings.data
                     .flatMap((meeting) => meeting.sessions)

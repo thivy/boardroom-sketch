@@ -263,6 +263,30 @@ export type CommandResult =
 /** A moment in a meeting's graph: after a given op, or after the last op made by a time. */
 export type GraphCut = { opId: number } | { at: number };
 
+export type GraphBuildState = "idle" | "running" | "done" | "failed" | "cancelled";
+
+/** Where building a meeting's graph from one saved transcript is. */
+export type GraphBuildStatus = {
+  sessionId: number;
+  meetingId: string;
+  state: GraphBuildState;
+  /** Turns the transcript was cut into, and how many have been read so far. */
+  turns: number;
+  processed: number;
+  /** Model calls made, and how many of them failed twice and were skipped. */
+  batches: number;
+  failedBatches: number;
+  /** Changes the graph accepted, and changes that were dropped or refused. */
+  accepted: number;
+  rejected: number;
+  /** Live nodes in the meeting's graph right now. */
+  nodes: number;
+  startedAt?: number;
+  finishedAt?: number;
+  /** Why a build failed. */
+  error?: string;
+};
+
 /**
  * Where a meeting's graph is kept. Every method that takes an id also accepts the id of a node that
  * was since merged into another, and acts on the survivor. Rule violations reject with a `GraphRuleError`.
@@ -309,4 +333,10 @@ export interface GraphStore {
    * transcript they came from was deleted. Returns how many nodes were removed.
    */
   pruneUnsupported(meetingId: string): Promise<number>;
+
+  /**
+   * Deletes a meeting's whole graph, history included, so it can be built again. Returns how many
+   * nodes were live. It does not touch the transcripts.
+   */
+  clearGraph(meetingId: string): Promise<number>;
 }

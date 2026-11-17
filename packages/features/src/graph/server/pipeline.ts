@@ -8,13 +8,7 @@ import type {
   StructuredModel,
 } from "@app/contracts";
 import { createAliases, openThreads } from "./context";
-import {
-  EXTRACT_INSTRUCTIONS,
-  EXTRACT_SCHEMA,
-  extractContext,
-  planChanges,
-  type Rejection,
-} from "./extract";
+import { extractTurns } from "./extraction";
 import {
   TRIAGE_INSTRUCTIONS,
   TRIAGE_SCHEMA,
@@ -199,55 +193,13 @@ export function createGraphPipeline(options: GraphPipelineOptions) {
         return;
       }
 
-      const started = now();
       try {
-        const current = await graph.getGraph(meetingId);
-        const touches = [...new Set(batch.flatMap((entry) => entry.verdict?.touches ?? []))];
-        const context = extractContext(
+        await extractTurns(
+          { graph, log, model, meetingId },
           batch.map((entry) => entry.turn),
-          current,
-          touches,
-        );
-        const answer = await model.complete(
-          {
-            tier: "smart",
-            instructions: EXTRACT_INSTRUCTIONS,
-            prompt: context.prompt,
-            schema: EXTRACT_SCHEMA,
-          },
+          [...new Set(batch.flatMap((entry) => entry.verdict?.touches ?? []))],
           AbortSignal.any([stop.signal, AbortSignal.timeout(extractTimeoutMs)]),
         );
-
-        const plan = planChanges(answer.value, context.labels, meetingId, current);
-        const results =
-          plan.commands.length > 0 ? await graph.apply(plan.commands, { source: "stated" }) : [];
-        const rejections: Rejection[] = [...plan.rejections];
-        results.forEach((result, position) => {
-          if (!result.ok) {
-            rejections.push({
-              index: plan.origins[position],
-              op: plan.commands[position].kind,
-              reason: `${result.code}: ${result.message}`,
-              change: plan.commands[position],
-            });
-          }
-        });
-
-        const turnIds = batch.map((entry) => entry.turn.id);
-        await emit("extract", {
-          turnIds,
-          proposed: Array.isArray((answer.value as { changes?: unknown })?.changes)
-            ? (answer.value as { changes: unknown[] }).changes.length
-            : 0,
-          accepted: results.filter((result) => result.ok).length,
-          rejected: rejections.length,
-          adjustments: plan.adjustments,
-          promptChars: context.prompt.length,
-          model: answer.model,
-          effort: answer.effort,
-          ms: now() - started,
-        });
-        for (const rejection of rejections) await emit("rejection", { turnIds, ...rejection });
         pending.splice(0, batch.length);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
