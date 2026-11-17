@@ -12,8 +12,13 @@ export type ChatEvent =
   { type: "delta"; text: string } | { type: "error"; message: string };
 
 export type ChatSessionOptions = {
-  /** Background the assistant is given before the first question, such as a transcript to analyse. */
-  context?: string;
+  /** What the assistant is told before the first question: its role and any background, such as a transcript. */
+  instructions?: string;
+  /**
+   * A stable identity for the conversation, such as a meeting id. Creating a session with a key that was
+   * used before resumes that conversation, earlier turns included.
+   */
+  key?: string;
 };
 
 /** One conversation. It remembers earlier turns, so each `send` is a follow-up. */

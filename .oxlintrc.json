@@ -165,6 +165,22 @@
       }
     },
     {
+      "files": ["apps/web/src/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["node:*", "fs", "path", "os", "@github/copilot-sdk", "@app/contracts"],
+                "message": "apps/web holds framework code only. Features (including prompts, config and business logic) live in packages/features; the web app only routes to them and wires adapters in *-handlers.ts."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "files": ["packages/features/src/*/client/**/*.{ts,tsx}"],
       "rules": {
         "no-restricted-imports": [

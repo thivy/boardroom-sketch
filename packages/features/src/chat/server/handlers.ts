@@ -7,7 +7,12 @@ const MAX_CONTEXT = 300_000;
 const MAX_CONVERSATIONS = 20;
 const IDLE_MS = 30 * 60_000;
 
-type Conversation = { session: ChatSession; lastUsed: number; busy: boolean };
+const INSTRUCTIONS = `You help the user analyse transcripts of their meetings.
+Answer from the transcript when one is given, and say so when it does not contain the answer.
+Keep answers concise and use plain text or simple lists.
+You have no tools: you cannot run commands, read or write files, or browse. Never write tool calls or tool output; if asked to do any of that, say you cannot.`;
+
+type Conversation = { session: ChatSession; lastUsed: number; busy: boolean; key?: string };
 
 const json = (body: unknown, status = 200) => Response.json(body, { status });
 
@@ -19,20 +24,22 @@ const isJson = (request: Request) =>
 export function createChatHandlers(backend: ChatBackend, store: TranscriptStore) {
   const conversations = new Map<string, Conversation>();
 
-  const release = (id: string) => {
+  const release = async (id: string) => {
     const conversation = conversations.get(id);
     conversations.delete(id);
-    void conversation?.session.close().catch(() => {});
+    await conversation?.session.close().catch(() => {});
   };
 
   setInterval(() => {
     const cutoff = Date.now() - IDLE_MS;
     for (const [id, conversation] of conversations) {
-      if (!conversation.busy && conversation.lastUsed < cutoff) release(id);
+      if (!conversation.busy && conversation.lastUsed < cutoff) void release(id);
     }
   }, 5 * 60_000).unref();
 
-  async function transcriptContext(sessionId: number): Promise<string | undefined> {
+  async function transcriptContext(
+    sessionId: number,
+  ): Promise<{ context: string; key: string } | undefined> {
     const transcript = await store.getSession(sessionId);
     if (!transcript) return undefined;
     const text = renderTranscript(transcript, "txt");
@@ -40,7 +47,10 @@ export function createChatHandlers(backend: ChatBackend, store: TranscriptStore)
       text.length > MAX_CONTEXT
         ? `${text.slice(0, MAX_CONTEXT)}\n[The transcript was cut here because it is too long.]`
         : text;
-    return `The user is asking about this meeting transcript:\n\n${body}`;
+    return {
+      context: `The user is asking about this meeting transcript:\n\n${body}`,
+      key: `meeting:${transcript.session.meetingId}`,
+    };
   }
 
   return {
@@ -71,18 +81,27 @@ export function createChatHandlers(backend: ChatBackend, store: TranscriptStore)
 
       if (!conversation) {
         let context: string | undefined;
+        let key: string | undefined;
         if (body.transcriptSessionId !== undefined && body.transcriptSessionId !== null) {
-          context = await transcriptContext(Number(body.transcriptSessionId));
-          if (context === undefined) return json({ error: "No such transcript" }, 404);
+          const found = await transcriptContext(Number(body.transcriptSessionId));
+          if (!found) return json({ error: "No such transcript" }, 404);
+          ({ context, key } = found);
         }
+        // A meeting has one conversation; end one still open here before resuming it.
+        const open = key ? [...conversations].find(([, item]) => item.key === key) : undefined;
+        if (open?.[1].busy) return json({ error: "Still answering the last message" }, 409);
+        if (open) await release(open[0]);
         try {
-          const session = await backend.createSession({ context });
+          const session = await backend.createSession({
+            instructions: context ? `${INSTRUCTIONS}\n\n${context}` : INSTRUCTIONS,
+            key,
+          });
           if (conversations.size >= MAX_CONVERSATIONS) {
             const oldest = [...conversations].sort((a, b) => a[1].lastUsed - b[1].lastUsed)[0];
-            if (oldest) release(oldest[0]);
+            if (oldest) await release(oldest[0]);
           }
           id = crypto.randomUUID();
-          conversation = { session, lastUsed: Date.now(), busy: false };
+          conversation = { session, lastUsed: Date.now(), busy: false, key };
           conversations.set(id, conversation);
         } catch (error) {
           return json(

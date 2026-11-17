@@ -6,6 +6,7 @@ import type {
   ChatStatus,
 } from "@app/contracts";
 import { CopilotClient, type CopilotSession } from "@github/copilot-sdk";
+import { createHash } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -14,11 +15,6 @@ export type CopilotChatOptions = {
   /** The model id. Defaults to `COPILOT_MODEL`, then the runtime's own choice. */
   model?: string;
 };
-
-const INSTRUCTIONS = `You help the user analyse transcripts of their meetings.
-Answer from the transcript when one is given, and say so when it does not contain the answer.
-Keep answers concise and use plain text or simple lists.
-You have no tools: you cannot run commands, read or write files, or browse. Never write tool calls or tool output; if asked to do any of that, say you cannot.`;
 
 /** This is a chat, not an agent: no shell, no files, no MCP servers, whatever the user has installed. */
 const NO_TOOLS = ["builtin:*", "mcp:*", "custom:*"];
@@ -75,22 +71,25 @@ export function copilotChat({
       }
     },
 
-    async createSession({ context }: ChatSessionOptions = {}): Promise<ChatSession> {
-      const session = await (
-        await getClient()
-      ).createSession({
+    async createSession({ instructions, key }: ChatSessionOptions = {}): Promise<ChatSession> {
+      const copilot = await getClient();
+      const config = {
         model,
         streaming: true,
         workingDirectory: emptyWorkingDirectory(),
         excludedTools: NO_TOOLS,
         // Nothing is meant to ask, but if something does, the answer is no.
-        onPermissionRequest: () => ({ kind: "reject" }),
-        systemMessage: {
-          mode: "append",
-          content: context ? `${INSTRUCTIONS}\n\n${context}` : INSTRUCTIONS,
-        },
-      });
-      return wrap(session);
+        onPermissionRequest: () => ({ kind: "reject" as const }),
+        ...(instructions && { systemMessage: { mode: "append" as const, content: instructions } }),
+      };
+      if (!key) return wrap(await copilot.createSession(config));
+
+      // The same key always maps to the same Copilot session, so a meeting keeps its conversation.
+      const sessionId = `boardroom-${createHash("sha256").update(key).digest("hex").slice(0, 32)}`;
+      if (await copilot.getSessionMetadata(sessionId)) {
+        return wrap(await copilot.resumeSession(sessionId, config));
+      }
+      return wrap(await copilot.createSession({ ...config, sessionId }));
     },
   };
 }
