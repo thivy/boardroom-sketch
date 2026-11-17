@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CaptionsRouteImport } from './routes/captions'
 import { Route as ChatRouteImport } from './routes/chat'
+import { Route as GraphRouteImport } from './routes/graph'
 import { Route as TranscriptsRouteImport } from './routes/transcripts'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiGraphRouteImport } from './routes/api/graph'
@@ -39,6 +40,11 @@ const CaptionsRoute = CaptionsRouteImport.update({
 const ChatRoute = ChatRouteImport.update({
   id: '/chat',
   path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GraphRoute = GraphRouteImport.update({
+  id: '/graph',
+  path: '/graph',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TranscriptsRoute = TranscriptsRouteImport.update({
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/captions': typeof CaptionsRoute
   '/chat': typeof ChatRoute
+  '/graph': typeof GraphRoute
   '/transcripts': typeof TranscriptsRoute
   '/api/chat': typeof ApiChatRouteWithChildren
   '/api/graph': typeof ApiGraphRouteWithChildren
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/captions': typeof CaptionsRoute
   '/chat': typeof ChatRoute
+  '/graph': typeof GraphRoute
   '/transcripts': typeof TranscriptsRoute
   '/api/chat': typeof ApiChatRouteWithChildren
   '/api/graph': typeof ApiGraphRouteWithChildren
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/captions': typeof CaptionsRoute
   '/chat': typeof ChatRoute
+  '/graph': typeof GraphRoute
   '/transcripts': typeof TranscriptsRoute
   '/api/chat': typeof ApiChatRouteWithChildren
   '/api/graph': typeof ApiGraphRouteWithChildren
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/'
     | '/captions'
     | '/chat'
+    | '/graph'
     | '/transcripts'
     | '/api/chat'
     | '/api/graph'
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/'
     | '/captions'
     | '/chat'
+    | '/graph'
     | '/transcripts'
     | '/api/chat'
     | '/api/graph'
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/'
     | '/captions'
     | '/chat'
+    | '/graph'
     | '/transcripts'
     | '/api/chat'
     | '/api/graph'
@@ -223,6 +235,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CaptionsRoute: typeof CaptionsRoute
   ChatRoute: typeof ChatRoute
+  GraphRoute: typeof GraphRoute
   TranscriptsRoute: typeof TranscriptsRoute
   ApiChatRoute: typeof ApiChatRouteWithChildren
   ApiGraphRoute: typeof ApiGraphRouteWithChildren
@@ -254,6 +267,13 @@ declare module '@tanstack/react-router' {
       path: '/chat'
       fullPath: '/chat'
       preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/graph': {
+      id: '/graph'
+      path: '/graph'
+      fullPath: '/graph'
+      preLoaderRoute: typeof GraphRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/transcripts': {
@@ -393,6 +413,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CaptionsRoute: CaptionsRoute,
   ChatRoute: ChatRoute,
+  GraphRoute: GraphRoute,
   TranscriptsRoute: TranscriptsRoute,
   ApiChatRoute: ApiChatRouteWithChildren,
   ApiGraphRoute: ApiGraphRouteWithChildren,
