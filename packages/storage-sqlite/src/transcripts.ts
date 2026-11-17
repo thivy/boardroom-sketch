@@ -31,7 +31,8 @@ const toSession = (row: SessionRow): StoredSession => ({
 });
 
 /** Captions without a speaker id are keyed by name, so one person stays one speaker. */
-const speakerKey = ({ speakerId, speaker }: Caption) => speakerId || `name:${speaker}`;
+export const speakerKey = ({ speakerId, speaker }: Pick<Caption, "speakerId" | "speaker">) =>
+  speakerId || `name:${speaker}`;
 
 /** Keeps transcripts in the shared database (see `openDatabase`). */
 export function transcriptsSqlite(db: DatabaseSync): TranscriptStore {
