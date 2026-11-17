@@ -61,12 +61,13 @@ A recorded meeting can also be turned into a graph of what was meant: decisions,
 Needs [Rust](https://rustup.rs) and, on Windows, the Visual Studio C++ Build Tools plus WebView2 (included in Windows 11). Open a new terminal after installing Rust so it is on the PATH.
 
 ```bash
-bun run desktop:dev     # builds the web app, prepares the sidecar, opens the window
-bun run desktop:build   # unsigned local installer under apps/desktop/src-tauri/target/release/bundle
-bun run desktop:release # also signs the update packages; needs TAURI_SIGNING_PRIVATE_KEY (CI sets it)
+bun run desktop:dev       # opens the window on the Vite dev server: hot reload for web code
+bun run desktop:dev:built # builds the web app and runs it from the bundled Node sidecar, as in a release
+bun run desktop:build     # unsigned local installer under apps/desktop/src-tauri/target/release/bundle
+bun run desktop:release   # also signs the update packages; needs TAURI_SIGNING_PRIVATE_KEY (CI sets it)
 ```
 
-Dev runs the production server build, so run `desktop:dev` again after changing web code; use `bun run dev` for hot reload in a browser.
+`desktop:dev` uses `src-tauri/tauri.dev.conf.json`: Tauri starts `vite dev` on `127.0.0.1:3100` (not 3000, so it can run beside `bun run dev`), waits for it, and loads it in the window. Edits to web code hot reload in place. Rust changes under `src-tauri` rebuild and restart the app. It needs no sidecar, so nothing has to be prepared first, but it stores transcripts where `bun run dev` does (`./data` in `apps/web`), not in the app data folder. Use `desktop:dev:built` to test the sidecar, the data folder and the startup error screen; it runs the production build, so run it again after changing web code.
 
 ### Download a build from GitHub
 

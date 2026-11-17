@@ -73,6 +73,12 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
+            // `tauri dev --config src-tauri/tauri.dev.conf.json` points the window at the Vite dev server,
+            // which is the server and has hot reload, so there is no bundled server to start.
+            if tauri::is_dev() && app.config().build.dev_url.is_some() {
+                return Ok(());
+            }
+
             let window = app.get_webview_window("main").expect("main window");
             let port = free_port();
 
@@ -175,8 +181,11 @@ pub fn run() {
 
     app.run(|handle, event| {
         if let RunEvent::Exit = event {
-            if let Some(child) = handle.state::<Server>().0.lock().unwrap().take() {
-                let _ = child.kill();
+            // Absent when the window is served by the Vite dev server.
+            if let Some(server) = handle.try_state::<Server>() {
+                if let Some(child) = server.0.lock().unwrap().take() {
+                    let _ = child.kill();
+                }
             }
         }
     });
