@@ -11,21 +11,28 @@ import {
   isOrigin,
   isPersonRole,
   isStatusOf,
+  mayOverwrite,
   orientEdge,
+  originRank,
   parseAttrs,
+  replayGraph,
   roleAllowed,
   type AddEdgeInput,
+  type AddEvidenceInput,
   type Change,
+  type CommandResult,
   type CreateNodeInput,
   type DeleteEdgeInput,
   type DeleteNodeInput,
   type EdgeFamily,
   type EdgeType,
   type Evidence,
+  type GraphCommand,
   type GraphEdge,
   type GraphErrorCode,
   type GraphNode,
   type GraphOp,
+  type GraphOpDetails,
   type GraphOpKind,
   type GraphStore,
   type MeetingGraph,
@@ -34,9 +41,11 @@ import {
   type NodePerson,
   type NodeType,
   type Origin,
+  type OriginChange,
   type PersonLinkInput,
   type PersonRef,
   type PersonRole,
+  type ReplayOp,
   type SetStatusInput,
   type StatusPrecondition,
   type UpdateNodeInput,
@@ -74,6 +83,7 @@ type EdgeRow = {
   origin: Origin;
   confidence: number;
   rationale: string | null;
+  folded_into: string | null;
   deleted_at: number | null;
   created_at: number;
 };
@@ -83,6 +93,7 @@ type PersonRow = { speaker_id: string; speaker: string; role: PersonRole };
 type OpRow = {
   id: number;
   kind: GraphOpKind;
+  source: Origin;
   node_id: string | null;
   edge_id: string | null;
   detail: string;
@@ -95,6 +106,12 @@ type Justification = {
   evidence: { captionId: number; quote: string }[];
   rationale: string | null;
 };
+
+/** What one command touched. */
+type Outcome = { nodeId?: string; edgeId?: string };
+
+/** The settings a run of commands shares: who is changing the graph, and the names they gave nodes. */
+type Run = { source: Origin; refs: Map<string, string> };
 
 function fail(code: GraphErrorCode, message: string): never {
   throw new GraphRuleError(code, message);
@@ -126,18 +143,27 @@ const checkConfidence = (value: number) => {
   return value;
 };
 
-const checkOrigin = (value: unknown, rationale: string | null): Origin => {
-  const origin = value ?? "stated";
-  if (!isOrigin(origin)) fail("invalid_input", `Unknown origin "${String(value)}"`);
-  if (origin === "inferred" && !rationale) {
+const checkSource = (value: unknown, rationale: string | null): Origin => {
+  if (!isOrigin(value)) fail("invalid_input", `Unknown source "${String(value)}"`);
+  if (value === "inferred" && !rationale) {
     fail("missing_rationale", "Something inferred needs a rationale that says why");
   }
-  return origin;
+  return value;
+};
+
+const outranked = (source: Origin, target: Origin, what: string) => {
+  if (!mayOverwrite(source, target)) {
+    fail(
+      "outranked",
+      `${what} is ${target}, and a change that is only ${source} cannot overwrite it`,
+    );
+  }
 };
 
 /**
  * Keeps a meeting's graph in the shared database (see `openDatabase`). Every change runs in one
- * transaction and is written to `graph_ops` with the transcript quotes that justify it.
+ * transaction and is written to `graph_ops` with enough detail to rebuild the graph from the log
+ * alone, and with the transcript quotes that justify it.
  */
 export function graphSqlite(
   db: DatabaseSync,
@@ -154,6 +180,7 @@ export function graphSqlite(
       (id, meeting_id, type, status, title, topic_id, origin, confidence, attrs, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
   const touchNode = db.prepare("UPDATE graph_nodes SET updated_at = ? WHERE id = ?");
+  const setNodeOrigin = db.prepare("UPDATE graph_nodes SET origin = ? WHERE id = ?");
   const updateNodeFields = db.prepare(
     "UPDATE graph_nodes SET title = ?, confidence = ?, topic_id = ?, attrs = ?, updated_at = ? WHERE id = ?",
   );
@@ -165,6 +192,7 @@ export function graphSqlite(
     SELECT * FROM graph_nodes
     WHERE meeting_id = ? AND merged_into IS NULL AND deleted_at IS NULL
     ORDER BY created_at, rowid`);
+  const childrenOf = db.prepare("SELECT id FROM graph_nodes WHERE topic_id = ?");
   const ungroupChildren = db.prepare("UPDATE graph_nodes SET topic_id = NULL WHERE topic_id = ?");
   const moveChildren = db.prepare("UPDATE graph_nodes SET topic_id = ? WHERE topic_id = ?");
   const setMergedInto = db.prepare(
@@ -172,6 +200,7 @@ export function graphSqlite(
   );
   const repointMerged = db.prepare("UPDATE graph_nodes SET merged_into = ? WHERE merged_into = ?");
 
+  const speakerName = db.prepare("SELECT name FROM speakers WHERE id = ?");
   const peopleOf = db.prepare(`
     SELECT np.speaker_id, sp.name AS speaker, np.role
     FROM graph_node_person np JOIN speakers sp ON sp.id = np.speaker_id
@@ -192,7 +221,6 @@ export function graphSqlite(
   const roleCount = db.prepare(
     "SELECT COUNT(*) AS n FROM graph_node_person WHERE node_id = ? AND role = ?",
   );
-  const linksOf = db.prepare("SELECT speaker_id, role FROM graph_node_person WHERE node_id = ?");
   const isParticipant = db.prepare(`
     SELECT 1 FROM captions c JOIN sessions s ON s.id = c.session_id
     WHERE s.meeting_id = ? AND c.speaker_id = ? LIMIT 1`);
@@ -210,12 +238,11 @@ export function graphSqlite(
   );
   const moveEdge = db.prepare("UPDATE graph_edges SET src_id = ?, dst_id = ? WHERE id = ?");
   const softDeleteEdge = db.prepare("UPDATE graph_edges SET deleted_at = ? WHERE id = ?");
-  const softDeleteEdgesOf = db.prepare(
-    "UPDATE graph_edges SET deleted_at = ? WHERE deleted_at IS NULL AND (src_id = ? OR dst_id = ?)",
+  const foldEdge = db.prepare(
+    "UPDATE graph_edges SET deleted_at = ?, folded_into = ? WHERE id = ?",
   );
-  const upgradeOrigin = db.prepare(
-    "UPDATE graph_edges SET origin = 'stated' WHERE id = ? AND origin = 'inferred'",
-  );
+  const repointFolded = db.prepare("UPDATE graph_edges SET folded_into = ? WHERE folded_into = ?");
+  const setEdgeOrigin = db.prepare("UPDATE graph_edges SET origin = ? WHERE id = ?");
   const meetingEdges = db.prepare(`
     SELECT e.* FROM graph_edges e
     JOIN graph_nodes s ON s.id = e.src_id AND s.merged_into IS NULL AND s.deleted_at IS NULL
@@ -231,19 +258,28 @@ export function graphSqlite(
     ORDER BY e.created_at, e.rowid`);
 
   const insertOp = db.prepare(`
-    INSERT INTO graph_ops (meeting_id, kind, node_id, edge_id, detail, rationale, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`);
+    INSERT INTO graph_ops (meeting_id, kind, source, node_id, edge_id, detail, rationale, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`);
   const insertEvidence = db.prepare(
     "INSERT INTO graph_evidence (op_id, caption_id, quote) VALUES (?, ?, ?)",
   );
   const findCaption = db.prepare(`
     SELECT c.id FROM captions c JOIN sessions s ON s.id = c.session_id
     WHERE c.session_id = ? AND c.source_id = ? AND s.meeting_id = ?`);
-  const opsOfNode = db.prepare(
-    "SELECT id, kind, node_id, edge_id, detail, rationale, created_at FROM graph_ops WHERE node_id = ? ORDER BY id",
+  const OP_COLUMNS = "id, kind, source, node_id, edge_id, detail, rationale, created_at";
+  const opsOfNode = db.prepare(`
+    SELECT ${OP_COLUMNS} FROM graph_ops
+    WHERE node_id = ? OR node_id IN (SELECT id FROM graph_nodes WHERE merged_into = ?)
+    ORDER BY id`);
+  const opsOfEdge = db.prepare(`
+    SELECT ${OP_COLUMNS} FROM graph_ops
+    WHERE edge_id = ? OR edge_id IN (SELECT id FROM graph_edges WHERE folded_into = ?)
+    ORDER BY id`);
+  const opsUpTo = db.prepare(
+    `SELECT ${OP_COLUMNS} FROM graph_ops WHERE meeting_id = ? AND id <= ? ORDER BY id`,
   );
-  const opsOfEdge = db.prepare(
-    "SELECT id, kind, node_id, edge_id, detail, rationale, created_at FROM graph_ops WHERE edge_id = ? ORDER BY id",
+  const lastOpAt = db.prepare(
+    "SELECT COALESCE(MAX(id), 0) AS id FROM graph_ops WHERE meeting_id = ? AND created_at <= ?",
   );
   const evidenceOfOp = db.prepare(`
     SELECT v.quote, c.session_id, c.source_id, c.speaker_id, sp.name AS speaker, c.updated_at
@@ -251,14 +287,20 @@ export function graphSqlite(
     JOIN captions c ON c.id = v.caption_id
     JOIN speakers sp ON sp.id = c.speaker_id
     WHERE v.op_id = ? ORDER BY v.id`);
-  const repointNodeOps = db.prepare("UPDATE graph_ops SET node_id = ? WHERE node_id = ?");
-  const repointEdgeOps = db.prepare("UPDATE graph_ops SET edge_id = ? WHERE edge_id = ?");
   const pruneEdges = db.prepare(`
-    DELETE FROM graph_edges WHERE meeting_id = ? AND NOT EXISTS (
-      SELECT 1 FROM graph_ops o JOIN graph_evidence v ON v.op_id = o.id WHERE o.edge_id = graph_edges.id)`);
+    DELETE FROM graph_edges WHERE meeting_id = ? AND folded_into IS NULL AND NOT EXISTS (
+      SELECT 1 FROM graph_ops o JOIN graph_evidence v ON v.op_id = o.id
+      WHERE o.edge_id = graph_edges.id
+         OR o.edge_id IN (SELECT f.id FROM graph_edges f WHERE f.folded_into = graph_edges.id))`);
   const pruneNodes = db.prepare(`
     DELETE FROM graph_nodes WHERE meeting_id = ? AND merged_into IS NULL AND NOT EXISTS (
-      SELECT 1 FROM graph_ops o JOIN graph_evidence v ON v.op_id = o.id WHERE o.node_id = graph_nodes.id)`);
+      SELECT 1 FROM graph_ops o JOIN graph_evidence v ON v.op_id = o.id
+      WHERE o.node_id = graph_nodes.id
+         OR o.node_id IN (SELECT m.id FROM graph_nodes m WHERE m.merged_into = graph_nodes.id))`);
+
+  let lastOpId = 0;
+  /** When the command being run happened, so every row it writes carries the same time. */
+  let stamp = 0;
 
   function transaction<T>(work: () => T): T {
     db.exec("BEGIN");
@@ -299,6 +341,9 @@ export function graphSqlite(
     } as GraphNode;
   }
 
+  const nodeById = (id: string) => toNode(selectNode.get(id) as NodeRow);
+  const edgeById = (id: string) => toEdge(selectEdge.get(id) as EdgeRow);
+
   function edgesTouching(nodeId: string): NodeEdge[] {
     const rows = edgesWithLiveOther.all(nodeId, nodeId, nodeId) as EdgeRow[];
     return rows.map((row) => ({
@@ -308,7 +353,7 @@ export function graphSqlite(
     }));
   }
 
-  // ---- justification ----
+  // ---- justification and the log ----
 
   /** Matches a change's evidence to stored captions of this meeting, and checks it says enough. */
   function justify(
@@ -343,26 +388,43 @@ export function graphSqlite(
     return { evidence, rationale };
   }
 
-  function record(
+  function record<K extends GraphOpKind>(
     meetingId: string,
-    kind: GraphOpKind,
+    kind: K,
+    source: Origin,
     subject: { nodeId?: string; edgeId?: string },
-    detail: Record<string, unknown>,
+    detail: GraphOpDetails[K],
     { evidence, rationale }: Justification,
   ) {
     const { id } = insertOp.get(
       meetingId,
       kind,
+      source,
       subject.nodeId ?? null,
       subject.edgeId ?? null,
       JSON.stringify(detail),
       rationale,
-      now(),
+      stamp,
     ) as { id: number };
     for (const item of evidence) insertEvidence.run(id, item.captionId, item.quote);
+    lastOpId = id;
+  }
+
+  /** A person's own edit makes a node `human`. */
+  function adopt(row: NodeRow, source: Origin): OriginChange | undefined {
+    if (source !== "human" || row.origin === "human") return undefined;
+    setNodeOrigin.run("human", row.id);
+    return { from: row.origin, to: "human" };
   }
 
   // ---- people ----
+
+  const personOf = (key: string, role: PersonRole): NodePerson =>
+    toPerson({
+      speaker_id: key,
+      speaker: (speakerName.get(key) as { name: string } | undefined)?.name ?? "",
+      role,
+    });
 
   /** The stored speaker key, once the person is known to have spoken in this meeting. */
   function participant(meetingId: string, person: PersonRef): string {
@@ -390,7 +452,12 @@ export function graphSqlite(
     return topic.id;
   }
 
-  function assertPreconditions(row: NodeRow, to: string, justification: Justification) {
+  function assertPreconditions(
+    row: NodeRow,
+    to: string,
+    justification: Justification,
+    source: Origin,
+  ) {
     const rules = STATUS_PRECONDITIONS[row.type] as
       | Record<string, StatusPrecondition | undefined>
       | undefined;
@@ -401,7 +468,10 @@ export function graphSqlite(
 
     switch (rule.kind) {
       case "evidence":
-        if (justification.evidence.length === 0) refuse("a quote from the transcript");
+        // A person's own confirmation is the evidence; only a model has to point at the words.
+        if (source !== "human" && justification.evidence.length === 0) {
+          refuse("a quote from the transcript");
+        }
         break;
       case "owner":
         if (!hasRole.get(row.id, "owner")) refuse("an owner");
@@ -423,7 +493,7 @@ export function graphSqlite(
 
   // ---- changes ----
 
-  function create(input: CreateNodeInput): GraphNode {
+  function create(input: CreateNodeInput, run: Run): Outcome {
     if (!meetingExists.get(input.meetingId))
       fail("not_found", `No such meeting: ${input.meetingId}`);
     if (!isNodeType(input.type)) fail("invalid_input", `Unknown node type "${String(input.type)}"`);
@@ -439,8 +509,13 @@ export function graphSqlite(
       );
     }
 
-    const justification = justify(input, input.meetingId, "evidence");
-    const origin = checkOrigin(input.origin, justification.rationale);
+    const source = input.source ?? run.source;
+    const justification = justify(
+      input,
+      input.meetingId,
+      source === "human" ? "evidence or rationale" : "evidence",
+    );
+    checkSource(source, justification.rationale);
     const confidence = checkConfidence(input.confidence ?? 1);
     const attrs = parseAttrs(type, input.attrs ?? {});
     const topicId = input.topicId ? checkTopic(type, input.meetingId, input.topicId) : null;
@@ -454,7 +529,7 @@ export function graphSqlite(
     }
 
     const id = randomUUID();
-    const at = now();
+    const at = stamp;
     insertNode.run(
       id,
       input.meetingId,
@@ -462,20 +537,36 @@ export function graphSqlite(
       status,
       title,
       topicId,
-      origin,
+      source,
       confidence,
       JSON.stringify(attrs),
       at,
       at,
     );
     for (const link of links) insertPerson.run(id, link.key, link.role, at);
-    record(input.meetingId, "create_node", { nodeId: id }, { type, status }, justification);
-    return toNode(selectNode.get(id) as NodeRow);
+    record(
+      input.meetingId,
+      "create_node",
+      source,
+      { nodeId: id },
+      {
+        type,
+        status,
+        title,
+        topicId,
+        origin: source,
+        confidence,
+        attrs,
+        people: (peopleOf.all(id) as PersonRow[]).map(toPerson),
+      },
+      justification,
+    );
+    return { nodeId: id };
   }
 
-  function update(input: UpdateNodeInput): GraphNode {
+  function update(input: UpdateNodeInput, run: Run): Outcome {
     const row = liveRow(input.nodeId);
-    const changed: Record<string, { from: unknown; to: unknown }> = {};
+    const changed: GraphOpDetails["update_node"]["changed"] = {};
 
     let title = row.title;
     if (input.title !== undefined) {
@@ -501,19 +592,28 @@ export function graphSqlite(
     let attrs = before;
     if (input.attrs !== undefined) {
       attrs = parseAttrs(row.type, { ...before, ...input.attrs });
-      if (JSON.stringify(attrs) !== JSON.stringify(before)) {
+      if (JSON.stringify(attrs) !== JSON.stringify(before))
         changed.attrs = { from: before, to: attrs };
-      }
     }
 
-    if (Object.keys(changed).length === 0) return toNode(row);
+    if (Object.keys(changed).length === 0) return { nodeId: row.id };
+    const source = input.source ?? run.source;
+    checkSource(source, input.rationale?.trim() || null);
+    outranked(source, row.origin, `This ${row.type}`);
     const justification = justify(input, row.meeting_id, "evidence or rationale");
-    updateNodeFields.run(title, confidence, topicId, JSON.stringify(attrs), now(), row.id);
-    record(row.meeting_id, "update_node", { nodeId: row.id }, { changed }, justification);
-    return toNode(selectNode.get(row.id) as NodeRow);
+    updateNodeFields.run(title, confidence, topicId, JSON.stringify(attrs), stamp, row.id);
+    record(
+      row.meeting_id,
+      "update_node",
+      source,
+      { nodeId: row.id },
+      { changed, origin: adopt(row, source) },
+      justification,
+    );
+    return { nodeId: row.id };
   }
 
-  function changeStatus(input: SetStatusInput): GraphNode {
+  function changeStatus(input: SetStatusInput, run: Run): Outcome {
     const row = liveRow(input.nodeId);
     if (!isStatusOf(row.type, input.status)) {
       fail("invalid_status", `A ${row.type} has no status "${String(input.status)}"`);
@@ -528,20 +628,24 @@ export function graphSqlite(
         `A ${row.type} cannot go from ${row.status} to ${input.status} (allowed: ${allowed.join(", ") || "none, it is final"})`,
       );
     }
+    const source = input.source ?? run.source;
+    checkSource(source, input.rationale?.trim() || null);
+    outranked(source, row.origin, `This ${row.type}`);
     const justification = justify(input, row.meeting_id, "evidence or rationale");
-    assertPreconditions(row, input.status, justification);
-    updateStatus.run(input.status, now(), row.id);
+    assertPreconditions(row, input.status, justification, source);
+    updateStatus.run(input.status, stamp, row.id);
     record(
       row.meeting_id,
       "set_status",
+      source,
       { nodeId: row.id },
-      { from: row.status, to: input.status },
+      { from: row.status, to: input.status, origin: adopt(row, source) },
       justification,
     );
-    return toNode(selectNode.get(row.id) as NodeRow);
+    return { nodeId: row.id };
   }
 
-  function merge(input: MergeNodesInput): GraphNode {
+  function merge(input: MergeNodesInput, run: Run): Outcome {
     const survivor = liveRow(input.survivorId);
     const loser = liveRow(input.loserId);
     if (survivor.id === loser.id) fail("merge_mismatch", "A node cannot be merged into itself");
@@ -551,30 +655,40 @@ export function graphSqlite(
     if (survivor.type !== loser.type) {
       fail("merge_mismatch", `A ${loser.type} cannot be merged into a ${survivor.type}`);
     }
+    const source = input.source ?? run.source;
+    checkSource(source, input.rationale?.trim() || null);
+    outranked(source, survivor.origin, `This ${survivor.type}`);
+    outranked(source, loser.origin, `This ${loser.type}`);
     const justification = justify(input, survivor.meeting_id, "evidence or rationale");
-    const at = now();
+    const at = stamp;
 
-    for (const link of linksOf.all(loser.id) as { speaker_id: string; role: PersonRole }[]) {
-      insertPerson.run(survivor.id, link.speaker_id, link.role, at);
-      deletePerson.run(loser.id, link.speaker_id, link.role);
+    const people = (peopleOf.all(loser.id) as PersonRow[]).map(toPerson);
+    for (const person of people) {
+      const key = speakerKey(person);
+      insertPerson.run(survivor.id, key, person.role, at);
+      deletePerson.run(loser.id, key, person.role);
     }
-    if (survivor.topic_id === null && loser.topic_id !== null) {
+    const adoptedTopic = survivor.topic_id === null ? loser.topic_id : null;
+    if (adoptedTopic) {
       updateNodeFields.run(
         survivor.title,
         survivor.confidence,
-        loser.topic_id,
+        adoptedTopic,
         survivor.attrs,
         at,
         survivor.id,
       );
     }
+    const childrenMoved = (childrenOf.all(loser.id) as { id: string }[]).map((child) => child.id);
     moveChildren.run(survivor.id, loser.id);
 
+    const edges: GraphOpDetails["merge_nodes"]["edges"] = [];
     for (const edge of liveEdgesTouching.all(loser.id, loser.id) as EdgeRow[]) {
       const src = edge.src_id === loser.id ? survivor.id : edge.src_id;
       const dst = edge.dst_id === loser.id ? survivor.id : edge.dst_id;
       if (src === dst) {
         softDeleteEdge.run(at, edge.id);
+        edges.push({ edgeId: edge.id, action: "dropped" });
         continue;
       }
       const oriented = orientEdge(edge.type, src, dst);
@@ -582,39 +696,80 @@ export function graphSqlite(
         | EdgeRow
         | undefined;
       if (twin) {
-        repointEdgeOps.run(twin.id, edge.id);
-        if (edge.origin === "stated") upgradeOrigin.run(twin.id);
-        softDeleteEdge.run(at, edge.id);
+        const stronger = originRank(edge.origin) > originRank(twin.origin);
+        if (stronger) setEdgeOrigin.run(edge.origin, twin.id);
+        foldEdge.run(at, twin.id, edge.id);
+        repointFolded.run(twin.id, edge.id);
+        edges.push({
+          edgeId: edge.id,
+          action: "folded",
+          into: twin.id,
+          origin: stronger ? { from: twin.origin, to: edge.origin } : undefined,
+        });
       } else {
         moveEdge.run(oriented.srcId, oriented.dstId, edge.id);
+        edges.push({
+          edgeId: edge.id,
+          action: "moved",
+          srcId: oriented.srcId,
+          dstId: oriented.dstId,
+        });
       }
     }
 
-    repointNodeOps.run(survivor.id, loser.id);
+    let origin = survivor.origin;
+    if (originRank(loser.origin) > originRank(origin)) origin = loser.origin;
+    if (source === "human") origin = "human";
+    const originChange =
+      origin === survivor.origin ? undefined : { from: survivor.origin, to: origin };
+    if (originChange) setNodeOrigin.run(origin, survivor.id);
+
     repointMerged.run(survivor.id, loser.id);
     setMergedInto.run(survivor.id, at, loser.id);
     touchNode.run(at, survivor.id);
     record(
       survivor.meeting_id,
       "merge_nodes",
+      source,
       { nodeId: survivor.id },
-      { merged: loser.id, title: loser.title },
+      {
+        merged: loser.id,
+        title: loser.title,
+        people,
+        adoptedTopic,
+        childrenMoved,
+        edges,
+        origin: originChange,
+      },
       justification,
     );
-    return toNode(selectNode.get(survivor.id) as NodeRow);
+    return { nodeId: survivor.id };
   }
 
-  function remove(input: DeleteNodeInput): void {
+  function remove(input: DeleteNodeInput, run: Run): Outcome {
     const row = liveRow(input.nodeId);
+    const source = input.source ?? run.source;
+    checkSource(source, input.rationale?.trim() || null);
+    outranked(source, row.origin, `This ${row.type}`);
     const justification = justify(input, row.meeting_id, "evidence or rationale");
-    const at = now();
+    const at = stamp;
+    const edges = (liveEdgesTouching.all(row.id, row.id) as EdgeRow[]).map((edge) => edge.id);
+    const ungrouped = (childrenOf.all(row.id) as { id: string }[]).map((child) => child.id);
     softDeleteNode.run(at, at, row.id);
-    softDeleteEdgesOf.run(at, row.id, row.id);
+    for (const id of edges) softDeleteEdge.run(at, id);
     ungroupChildren.run(row.id);
-    record(row.meeting_id, "delete_node", { nodeId: row.id }, { title: row.title }, justification);
+    record(
+      row.meeting_id,
+      "delete_node",
+      source,
+      { nodeId: row.id },
+      { title: row.title, edges, ungrouped, origin: adopt(row, source) },
+      justification,
+    );
+    return { nodeId: row.id };
   }
 
-  function connect(input: AddEdgeInput): GraphEdge {
+  function connect(input: AddEdgeInput, run: Run): Outcome {
     if (!isEdgeType(input.type)) fail("invalid_edge", `Unknown edge type "${String(input.type)}"`);
     const type = input.type;
     const from = liveRow(input.srcId);
@@ -625,25 +780,42 @@ export function graphSqlite(
       fail("invalid_edge", `${type} cannot join a ${from.type} to a ${to.type}`);
     }
 
-    const justification = justify(input, from.meeting_id, "evidence");
-    const origin = checkOrigin(input.origin, justification.rationale);
+    const source = input.source ?? run.source;
+    const justification = justify(
+      input,
+      from.meeting_id,
+      source === "human" ? "evidence or rationale" : "evidence",
+    );
+    checkSource(source, justification.rationale);
     const confidence = checkConfidence(input.confidence ?? 1);
     const { srcId, dstId } = orientEdge(type, from.id, to.id);
 
     const existing = findLiveEdge.get(srcId, dstId, type, "") as EdgeRow | undefined;
     if (existing) {
-      if (origin === "stated") upgradeOrigin.run(existing.id);
+      const stronger = originRank(source) > originRank(existing.origin);
+      if (stronger) setEdgeOrigin.run(source, existing.id);
       record(
         existing.meeting_id,
         "add_edge",
+        source,
         { edgeId: existing.id },
-        { type, corroborated: true },
+        {
+          type,
+          srcId,
+          dstId,
+          origin: stronger ? source : existing.origin,
+          confidence: existing.confidence,
+          rationale: existing.rationale,
+          corroborated: true,
+          upgraded: stronger ? { from: existing.origin, to: source } : undefined,
+        },
         justification,
       );
-      return toEdge(selectEdge.get(existing.id) as EdgeRow);
+      return { edgeId: existing.id };
     }
 
     const id = randomUUID();
+    const rationale = source === "inferred" ? justification.rationale : null;
     insertEdge.run(
       id,
       from.meeting_id,
@@ -651,47 +823,71 @@ export function graphSqlite(
       dstId,
       type,
       EDGE_RULES[type].family,
-      origin,
+      source,
       confidence,
-      origin === "inferred" ? justification.rationale : null,
-      now(),
+      rationale,
+      stamp,
     );
-    record(from.meeting_id, "add_edge", { edgeId: id }, { type, srcId, dstId }, justification);
-    return toEdge(selectEdge.get(id) as EdgeRow);
+    record(
+      from.meeting_id,
+      "add_edge",
+      source,
+      { edgeId: id },
+      { type, srcId, dstId, origin: source, confidence, rationale },
+      justification,
+    );
+    return { edgeId: id };
   }
 
-  function disconnect(input: DeleteEdgeInput): void {
+  function disconnect(input: DeleteEdgeInput, run: Run): Outcome {
     const row = selectEdge.get(input.edgeId) as EdgeRow | undefined;
     if (!row || row.deleted_at !== null) fail("not_found", `No such edge: ${input.edgeId}`);
+    const source = input.source ?? run.source;
+    checkSource(source, input.rationale?.trim() || null);
+    outranked(source, row.origin, `This ${row.type} edge`);
     const justification = justify(input, row.meeting_id, "evidence or rationale");
-    softDeleteEdge.run(now(), row.id);
-    record(row.meeting_id, "delete_edge", { edgeId: row.id }, { type: row.type }, justification);
+    softDeleteEdge.run(stamp, row.id);
+    record(
+      row.meeting_id,
+      "delete_edge",
+      source,
+      { edgeId: row.id },
+      { type: row.type },
+      justification,
+    );
+    return { edgeId: row.id };
   }
 
-  function link(input: PersonLinkInput): GraphNode {
+  function link(input: PersonLinkInput, run: Run): Outcome {
     const row = liveRow(input.nodeId);
     const role = checkRole(row.type, input.role);
     const key = participant(row.meeting_id, input.person);
+    const source = input.source ?? run.source;
+    checkSource(source, input.rationale?.trim() || null);
     const justification = justify(input, row.meeting_id, "evidence or rationale");
-    const at = now();
+    const at = stamp;
     const { changes } = insertPerson.run(row.id, key, role, at);
     if (changes > 0) {
       touchNode.run(at, row.id);
       record(
         row.meeting_id,
         "link_person",
+        source,
         { nodeId: row.id },
-        { role, speaker: key },
+        { person: personOf(key, role), origin: adopt(row, source) },
         justification,
       );
     }
-    return toNode(selectNode.get(row.id) as NodeRow);
+    return { nodeId: row.id };
   }
 
-  function unlink(input: PersonLinkInput): GraphNode {
+  function unlink(input: PersonLinkInput, run: Run): Outcome {
     const row = liveRow(input.nodeId);
     const role = checkRole(row.type, input.role);
     const key = speakerKey(input.person);
+    const source = input.source ?? run.source;
+    checkSource(source, input.rationale?.trim() || null);
+    outranked(source, row.origin, `This ${row.type}`);
     const justification = justify(input, row.meeting_id, "evidence or rationale");
     const owners = (roleCount.get(row.id, "owner") as { n: number }).n;
     if (role === "owner" && row.type === "action" && row.status === "committed" && owners <= 1) {
@@ -700,77 +896,217 @@ export function graphSqlite(
         "A committed action needs an owner; mark it orphaned before taking the owner off",
       );
     }
-    const at = now();
+    const person = personOf(key, role);
+    const at = stamp;
     const { changes } = deletePerson.run(row.id, key, role);
     if (changes > 0) {
       touchNode.run(at, row.id);
       record(
         row.meeting_id,
         "unlink_person",
+        source,
         { nodeId: row.id },
-        { role, speaker: key },
+        { person, origin: adopt(row, source) },
         justification,
       );
     }
-    return toNode(selectNode.get(row.id) as NodeRow);
+    return { nodeId: row.id };
+  }
+
+  function addEvidence(input: AddEvidenceInput, run: Run): Outcome {
+    if ((input.nodeId === undefined) === (input.edgeId === undefined)) {
+      fail("invalid_input", "Give the node or the edge to add evidence to, not both");
+    }
+    const source = input.source ?? run.source;
+    checkSource(source, input.rationale?.trim() || null);
+    if (input.nodeId !== undefined) {
+      const row = liveRow(input.nodeId);
+      record(
+        row.meeting_id,
+        "add_evidence",
+        source,
+        { nodeId: row.id },
+        {},
+        justify(input, row.meeting_id, "evidence"),
+      );
+      return { nodeId: row.id };
+    }
+    const row = selectEdge.get(input.edgeId!) as EdgeRow | undefined;
+    if (!row || row.deleted_at !== null) fail("not_found", `No such edge: ${input.edgeId}`);
+    record(
+      row.meeting_id,
+      "add_evidence",
+      source,
+      { edgeId: row.id },
+      {},
+      justify(input, row.meeting_id, "evidence"),
+    );
+    return { edgeId: row.id };
+  }
+
+  // ---- commands ----
+
+  const resolveId = (id: string, run: Run): string =>
+    id.startsWith("$") ? (run.refs.get(id) ?? fail("not_found", `Nothing was named ${id}`)) : id;
+  const resolveOptional = <T extends string | null | undefined>(id: T, run: Run) =>
+    typeof id === "string" ? resolveId(id, run) : id;
+
+  function execute(command: GraphCommand, run: Run): Outcome {
+    stamp = now();
+    switch (command.kind) {
+      case "create_node": {
+        const { input } = command;
+        const outcome = create(
+          { ...input, topicId: resolveOptional(input.topicId, run) ?? undefined },
+          run,
+        );
+        if (command.ref && outcome.nodeId) {
+          if (!command.ref.startsWith("$")) fail("invalid_input", "A ref is written $name");
+          run.refs.set(command.ref, outcome.nodeId);
+        }
+        return outcome;
+      }
+      case "update_node": {
+        const { input } = command;
+        return update(
+          {
+            ...input,
+            nodeId: resolveId(input.nodeId, run),
+            topicId: resolveOptional(input.topicId, run),
+          },
+          run,
+        );
+      }
+      case "set_status":
+        return changeStatus(
+          { ...command.input, nodeId: resolveId(command.input.nodeId, run) },
+          run,
+        );
+      case "merge_nodes":
+        return merge(
+          {
+            ...command.input,
+            survivorId: resolveId(command.input.survivorId, run),
+            loserId: resolveId(command.input.loserId, run),
+          },
+          run,
+        );
+      case "delete_node":
+        return remove({ ...command.input, nodeId: resolveId(command.input.nodeId, run) }, run);
+      case "add_edge":
+        return connect(
+          {
+            ...command.input,
+            srcId: resolveId(command.input.srcId, run),
+            dstId: resolveId(command.input.dstId, run),
+          },
+          run,
+        );
+      case "delete_edge":
+        return disconnect(command.input, run);
+      case "link_person":
+        return link({ ...command.input, nodeId: resolveId(command.input.nodeId, run) }, run);
+      case "unlink_person":
+        return unlink({ ...command.input, nodeId: resolveId(command.input.nodeId, run) }, run);
+      case "add_evidence":
+        return addEvidence(
+          { ...command.input, nodeId: resolveOptional(command.input.nodeId, run) },
+          run,
+        );
+    }
+  }
+
+  /** Runs one command in its own transaction and returns the node or edge it touched. */
+  function single<T>(command: GraphCommand, pick: (outcome: Outcome) => T): T {
+    return transaction(() => pick(execute(command, { source: "stated", refs: new Map() })));
   }
 
   function opsOf(rows: OpRow[]): GraphOp[] {
-    return rows.map((row) => ({
-      id: row.id,
-      kind: row.kind,
-      nodeId: row.node_id,
-      edgeId: row.edge_id,
-      detail: JSON.parse(row.detail),
-      rationale: row.rationale,
-      createdAt: row.created_at,
-      evidence: (
-        evidenceOfOp.all(row.id) as {
-          quote: string;
-          session_id: number;
-          source_id: string;
-          speaker_id: string;
-          speaker: string;
-          updated_at: number;
-        }[]
-      ).map((item): Evidence => ({
-        sessionId: item.session_id,
-        captionId: item.source_id,
-        quote: item.quote,
-        speakerId: item.speaker_id.startsWith("name:") ? "" : item.speaker_id,
-        speaker: item.speaker,
-        at: item.updated_at,
-      })),
-    }));
+    return rows.map(
+      (row) =>
+        ({
+          id: row.id,
+          kind: row.kind,
+          source: row.source,
+          nodeId: row.node_id,
+          edgeId: row.edge_id,
+          detail: JSON.parse(row.detail),
+          rationale: row.rationale,
+          createdAt: row.created_at,
+          evidence: (
+            evidenceOfOp.all(row.id) as {
+              quote: string;
+              session_id: number;
+              source_id: string;
+              speaker_id: string;
+              speaker: string;
+              updated_at: number;
+            }[]
+          ).map((item): Evidence => ({
+            sessionId: item.session_id,
+            captionId: item.source_id,
+            quote: item.quote,
+            speakerId: item.speaker_id.startsWith("name:") ? "" : item.speaker_id,
+            speaker: item.speaker,
+            at: item.updated_at,
+          })),
+        }) as GraphOp,
+    );
   }
 
   return {
     async createNode(input) {
-      return transaction(() => create(input as CreateNodeInput));
+      return single({ kind: "create_node", input: input as CreateNodeInput }, (o) =>
+        nodeById(o.nodeId!),
+      );
     },
     async updateNode(input) {
-      return transaction(() => update(input));
+      return single({ kind: "update_node", input }, (o) => nodeById(o.nodeId!));
     },
     async setStatus(input) {
-      return transaction(() => changeStatus(input));
+      return single({ kind: "set_status", input }, (o) => nodeById(o.nodeId!));
     },
     async mergeNodes(input) {
-      return transaction(() => merge(input));
+      return single({ kind: "merge_nodes", input }, (o) => nodeById(o.nodeId!));
     },
     async deleteNode(input) {
-      transaction(() => remove(input));
+      single({ kind: "delete_node", input }, () => undefined);
     },
     async addEdge(input) {
-      return transaction(() => connect(input));
+      return single({ kind: "add_edge", input }, (o) => edgeById(o.edgeId!));
     },
     async deleteEdge(input) {
-      transaction(() => disconnect(input));
+      single({ kind: "delete_edge", input }, () => undefined);
     },
     async linkPerson(input) {
-      return transaction(() => link(input));
+      return single({ kind: "link_person", input }, (o) => nodeById(o.nodeId!));
     },
     async unlinkPerson(input) {
-      return transaction(() => unlink(input));
+      return single({ kind: "unlink_person", input }, (o) => nodeById(o.nodeId!));
+    },
+    async addEvidence(input) {
+      single({ kind: "add_evidence", input }, () => undefined);
+    },
+
+    async apply(commands, defaults) {
+      return transaction(() => {
+        const run: Run = { source: defaults?.source ?? "stated", refs: new Map() };
+        const results: CommandResult[] = [];
+        for (const command of commands) {
+          db.exec("SAVEPOINT command");
+          try {
+            const outcome = execute(command, run);
+            db.exec("RELEASE command");
+            results.push({ ok: true, ...outcome, opId: lastOpId });
+          } catch (error) {
+            db.exec("ROLLBACK TO command");
+            db.exec("RELEASE command");
+            if (!(error instanceof GraphRuleError)) throw error;
+            results.push({ ok: false, code: error.code, message: error.message });
+          }
+        }
+        return results;
+      });
     },
 
     async getNode(id) {
@@ -793,6 +1129,25 @@ export function graphSqlite(
       };
     },
 
+    async asOf(meetingId, cut): Promise<MeetingGraph> {
+      const last =
+        "opId" in cut ? cut.opId : (lastOpAt.get(meetingId, cut.at) as { id: number }).id;
+      const ops = (opsUpTo.all(meetingId, last) as OpRow[]).map(
+        (row) =>
+          ({
+            id: row.id,
+            kind: row.kind,
+            source: row.source,
+            nodeId: row.node_id,
+            edgeId: row.edge_id,
+            detail: JSON.parse(row.detail),
+            rationale: row.rationale,
+            createdAt: row.created_at,
+          }) as ReplayOp,
+      );
+      return replayGraph(meetingId, ops);
+    },
+
     async edgesOf(nodeId, filter) {
       return edgesTouching(liveRow(nodeId).id).filter(
         (edge) =>
@@ -803,12 +1158,15 @@ export function graphSqlite(
 
     async history(subject) {
       if ("edgeId" in subject) {
-        if (!selectEdge.get(subject.edgeId)) fail("not_found", `No such edge: ${subject.edgeId}`);
-        return opsOf(opsOfEdge.all(subject.edgeId) as OpRow[]);
+        const row = selectEdge.get(subject.edgeId) as EdgeRow | undefined;
+        if (!row) fail("not_found", `No such edge: ${subject.edgeId}`);
+        const id = row.folded_into ?? row.id;
+        return opsOf(opsOfEdge.all(id, id) as OpRow[]);
       }
       const row = selectNode.get(subject.nodeId) as NodeRow | undefined;
       if (!row) fail("not_found", `No such node: ${subject.nodeId}`);
-      return opsOf(opsOfNode.all(row.merged_into ?? row.id) as OpRow[]);
+      const id = row.merged_into ?? row.id;
+      return opsOf(opsOfNode.all(id, id) as OpRow[]);
     },
 
     async pruneUnsupported(meetingId) {

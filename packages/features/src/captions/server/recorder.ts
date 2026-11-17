@@ -3,6 +3,7 @@ import type {
   Caption,
   CaptionEvent,
   CaptionSource,
+  RecordingObserver,
   TranscriptStore,
 } from "@app/contracts";
 
@@ -18,17 +19,40 @@ type Recording = ActiveRecording & {
  * Records meetings on the server, so a recording does not depend on a browser being open: it runs
  * from `start` until `stop` or until the meeting goes away. Browsers follow it with `subscribe`.
  */
-export function createRecorder(source: CaptionSource, store: TranscriptStore) {
+export function createRecorder(
+  source: CaptionSource,
+  store: TranscriptStore,
+  observers: RecordingObserver[] = [],
+) {
   const recordings = new Map<string, Recording>();
+
+  const view = ({ meetingId, title, session, captionsVisible }: Recording): ActiveRecording => ({
+    meetingId,
+    title,
+    session,
+    captionsVisible,
+  });
+
+  /** Observers never disturb a recording: one that throws is ignored. */
+  const tell = (call: (observer: RecordingObserver) => void) => {
+    for (const observer of observers) {
+      try {
+        call(observer);
+      } catch {
+        // Ignored on purpose.
+      }
+    }
+  };
 
   async function run(recording: Recording, events: AsyncIterable<CaptionEvent>) {
     try {
       for await (const event of events) {
         if (event.type === "status") recording.captionsVisible = event.captionsVisible;
         else
-          recording.saved = recording.saved.then(() =>
-            store.saveCaption(recording.session.id, event.caption),
-          );
+          recording.saved = recording.saved.then(async () => {
+            await store.saveCaption(recording.session.id, event.caption);
+            tell((observer) => observer.caption(view(recording), event.caption));
+          });
         for (const listener of recording.listeners) listener(event);
       }
     } catch {
@@ -37,16 +61,10 @@ export function createRecorder(source: CaptionSource, store: TranscriptStore) {
       await recording.saved.catch(() => {});
       await store.endSession(recording.session.id, Date.now());
       recordings.delete(recording.meetingId);
+      tell((observer) => observer.ended(view(recording)));
       for (const listener of recording.listeners) listener({ type: "closed" });
     }
   }
-
-  const view = ({ meetingId, title, session, captionsVisible }: Recording): ActiveRecording => ({
-    meetingId,
-    title,
-    session,
-    captionsVisible,
-  });
 
   return {
     active(): ActiveRecording[] {

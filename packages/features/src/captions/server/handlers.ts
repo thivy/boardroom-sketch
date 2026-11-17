@@ -1,4 +1,4 @@
-import type { CaptionSource, TranscriptStore } from "@app/contracts";
+import type { CaptionSource, RecordingObserver, TranscriptStore } from "@app/contracts";
 import { EXPORT_TYPES, exportFileName, isExportFormat, renderTranscript } from "./export";
 import { createRecorder } from "./recorder";
 
@@ -17,9 +17,16 @@ function sessionId(request: Request): number | undefined {
   return Number.isInteger(value) && value > 0 ? value : undefined;
 }
 
-/** The captions endpoints, as plain `(Request) => Response` handlers over a `CaptionSource` and a `TranscriptStore`. */
-export function createCaptionHandlers(source: CaptionSource, store: TranscriptStore) {
-  const recorder = createRecorder(source, store);
+/**
+ * The captions endpoints, as plain `(Request) => Response` handlers over a `CaptionSource` and a
+ * `TranscriptStore`. `observers` follow each recording as it happens.
+ */
+export function createCaptionHandlers(
+  source: CaptionSource,
+  store: TranscriptStore,
+  observers: RecordingObserver[] = [],
+) {
+  const recorder = createRecorder(source, store, observers);
 
   return {
     /** `GET`: the meetings that can be read right now. */

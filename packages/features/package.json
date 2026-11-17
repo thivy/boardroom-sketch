@@ -10,6 +10,7 @@
     "./captions/server": "./src/captions/server/index.ts",
     "./chat/client": "./src/chat/client/index.ts",
     "./chat/server": "./src/chat/server/index.ts",
+    "./graph/server": "./src/graph/server/index.ts",
     "./updates/client": "./src/updates/client/index.ts"
   },
   "scripts": {

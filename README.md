@@ -46,6 +46,10 @@ The assistant is a chat, not an agent: shell, file and MCP tools are switched of
 
 The SDK is not bundled into the server build: it finds its runtime in a platform package (about 190 MB) at run time, so it is a dependency of the published package and installed with it.
 
+## Meeting graph (experimental)
+
+A recorded meeting can also be turned into a graph of what was meant: decisions, actions, questions, risks and claims, the links between them and the quotes behind each. It is **off by default** because it asks a model about the meeting as it happens, which counts against the signed-in Copilot account. Set `GRAPH_PIPELINE=on` to follow every recording. Set `COPILOT_FAST_MODEL` and `COPILOT_SMART_MODEL` to choose the models (otherwise the first usable of a short preference list is used) and `COPILOT_FAST_EFFORT` / `COPILOT_SMART_EFFORT` for how hard they think (default `none`, which is fastest). There is no screen for it yet: read it at `GET /api/graph?meeting=<id>`. See [docs/graph-model.md](docs/graph-model.md) and [docs/graph-pipeline.md](docs/graph-pipeline.md).
+
 ## Desktop app (Tauri)
 
 `apps/desktop` wraps the app in a native window. The app needs its server (it talks to Teams over CDP, keeps transcripts in SQLite and calls the Copilot SDK), so Tauri ships the built server as a resource and starts it with a bundled Node binary (a sidecar) on a free local port. The window loads it from `127.0.0.1`, and the sidecar stops when the app closes.

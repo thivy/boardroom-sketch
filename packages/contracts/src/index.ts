@@ -1,6 +1,7 @@
 export type { Caption, CaptionEvent, CaptionSource, CaptionStatus, Meeting } from "./captions";
 export type {
   ActiveRecording,
+  RecordingObserver,
   SessionTranscript,
   StoredMeeting,
   StoredSession,
@@ -17,6 +18,7 @@ export {
   NODE_STATUSES,
   NODE_TRANSITIONS,
   NODE_TYPES,
+  OPEN_THREAD_STATUSES,
   ORIGINS,
   PERSON_ROLES,
   PERSON_ROLE_NAMES,
@@ -29,7 +31,9 @@ export {
   isOrigin,
   isPersonRole,
   isStatusOf,
+  mayOverwrite,
   orientEdge,
+  originRank,
   parseAttrs,
   roleAllowed,
 } from "./graph-vocabulary";
@@ -52,23 +56,32 @@ export type {
 } from "./graph-vocabulary";
 export type {
   AddEdgeInput,
+  AddEvidenceInput,
   Change,
+  CommandResult,
   CreateNodeInput,
   DeleteEdgeInput,
   DeleteNodeInput,
   Evidence,
   EvidenceInput,
+  GraphCommand,
+  GraphCut,
   GraphEdge,
   GraphNode,
   GraphOp,
+  GraphOpDetails,
   GraphOpKind,
   GraphStore,
   MeetingGraph,
   MergeNodesInput,
   NodeEdge,
   NodePerson,
+  OriginChange,
   PersonLinkInput,
   PersonRef,
   SetStatusInput,
   UpdateNodeInput,
 } from "./graph";
+export { replayGraph, type ReplayOp } from "./graph-replay";
+export type { ModelTier, StructuredModel, StructuredRequest, StructuredResponse } from "./model";
+export type { PipelineEvent, PipelineEventKind, PipelineLog } from "./pipeline-log";

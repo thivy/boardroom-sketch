@@ -5,26 +5,14 @@ import type {
   ChatSessionOptions,
   ChatStatus,
 } from "@app/contracts";
-import { CopilotClient, type CopilotSession } from "@github/copilot-sdk";
+import type { CopilotSession } from "@github/copilot-sdk";
 import { createHash } from "node:crypto";
-import { mkdirSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { NO_TOOLS, copilotClient, emptyWorkingDirectory } from "./runtime";
 
 export type CopilotChatOptions = {
   /** The model id. Defaults to `COPILOT_MODEL`, then the runtime's own choice. */
   model?: string;
 };
-
-/** This is a chat, not an agent: no shell, no files, no MCP servers, whatever the user has installed. */
-const NO_TOOLS = ["builtin:*", "mcp:*", "custom:*"];
-
-/** A folder with nothing in it, so the runtime does not pick up instructions from wherever the server runs. */
-function emptyWorkingDirectory() {
-  const directory = join(tmpdir(), "boardroom-sketch-chat");
-  mkdirSync(directory, { recursive: true });
-  return directory;
-}
 
 /**
  * Answers through the GitHub Copilot SDK, which drives the Copilot CLI runtime with the account the
@@ -33,20 +21,7 @@ function emptyWorkingDirectory() {
 export function copilotChat({
   model = process.env.COPILOT_MODEL || undefined,
 }: CopilotChatOptions = {}): ChatBackend {
-  let client: Promise<CopilotClient> | undefined;
-
-  // One runtime serves every conversation; it starts with the first use.
-  const getClient = () => {
-    client ??= (async () => {
-      const created = new CopilotClient();
-      await created.start();
-      return created;
-    })().catch((error) => {
-      client = undefined;
-      throw error;
-    });
-    return client;
-  };
+  const getClient = copilotClient;
 
   return {
     async status(): Promise<ChatStatus> {
@@ -144,3 +119,5 @@ function wrap(session: CopilotSession): ChatSession {
     close: () => session.disconnect(),
   };
 }
+
+export { copilotModel, type CopilotModelOptions } from "./model";

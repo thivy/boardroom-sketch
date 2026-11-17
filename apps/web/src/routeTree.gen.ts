@@ -14,12 +14,15 @@ import { Route as CaptionsRouteImport } from './routes/captions'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as TranscriptsRouteImport } from './routes/transcripts'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiGraphRouteImport } from './routes/api/graph'
 import { Route as ApiTranscriptsRouteImport } from './routes/api/transcripts'
 import { Route as ApiCaptionsMeetingsRouteImport } from './routes/api/captions.meetings'
 import { Route as ApiCaptionsPrepareRouteImport } from './routes/api/captions.prepare'
 import { Route as ApiCaptionsRecordingsRouteImport } from './routes/api/captions.recordings'
 import { Route as ApiCaptionsStreamRouteImport } from './routes/api/captions.stream'
 import { Route as ApiChatStatusRouteImport } from './routes/api/chat.status'
+import { Route as ApiGraphEventsRouteImport } from './routes/api/graph.events'
+import { Route as ApiGraphHistoryRouteImport } from './routes/api/graph.history'
 import { Route as ApiTranscriptsExportRouteImport } from './routes/api/transcripts.export'
 import { Route as ApiTranscriptsSessionRouteImport } from './routes/api/transcripts.session'
 
@@ -46,6 +49,11 @@ const TranscriptsRoute = TranscriptsRouteImport.update({
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGraphRoute = ApiGraphRouteImport.update({
+  id: '/api/graph',
+  path: '/api/graph',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTranscriptsRoute = ApiTranscriptsRouteImport.update({
@@ -78,6 +86,16 @@ const ApiChatStatusRoute = ApiChatStatusRouteImport.update({
   path: '/status',
   getParentRoute: () => ApiChatRoute,
 } as any)
+const ApiGraphEventsRoute = ApiGraphEventsRouteImport.update({
+  id: '/events',
+  path: '/events',
+  getParentRoute: () => ApiGraphRoute,
+} as any)
+const ApiGraphHistoryRoute = ApiGraphHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => ApiGraphRoute,
+} as any)
 const ApiTranscriptsExportRoute = ApiTranscriptsExportRouteImport.update({
   id: '/export',
   path: '/export',
@@ -95,12 +113,15 @@ export interface FileRoutesByFullPath {
   '/chat': typeof ChatRoute
   '/transcripts': typeof TranscriptsRoute
   '/api/chat': typeof ApiChatRouteWithChildren
+  '/api/graph': typeof ApiGraphRouteWithChildren
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
   '/api/captions/meetings': typeof ApiCaptionsMeetingsRoute
   '/api/captions/prepare': typeof ApiCaptionsPrepareRoute
   '/api/captions/recordings': typeof ApiCaptionsRecordingsRoute
   '/api/captions/stream': typeof ApiCaptionsStreamRoute
   '/api/chat/status': typeof ApiChatStatusRoute
+  '/api/graph/events': typeof ApiGraphEventsRoute
+  '/api/graph/history': typeof ApiGraphHistoryRoute
   '/api/transcripts/export': typeof ApiTranscriptsExportRoute
   '/api/transcripts/session': typeof ApiTranscriptsSessionRoute
 }
@@ -110,12 +131,15 @@ export interface FileRoutesByTo {
   '/chat': typeof ChatRoute
   '/transcripts': typeof TranscriptsRoute
   '/api/chat': typeof ApiChatRouteWithChildren
+  '/api/graph': typeof ApiGraphRouteWithChildren
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
   '/api/captions/meetings': typeof ApiCaptionsMeetingsRoute
   '/api/captions/prepare': typeof ApiCaptionsPrepareRoute
   '/api/captions/recordings': typeof ApiCaptionsRecordingsRoute
   '/api/captions/stream': typeof ApiCaptionsStreamRoute
   '/api/chat/status': typeof ApiChatStatusRoute
+  '/api/graph/events': typeof ApiGraphEventsRoute
+  '/api/graph/history': typeof ApiGraphHistoryRoute
   '/api/transcripts/export': typeof ApiTranscriptsExportRoute
   '/api/transcripts/session': typeof ApiTranscriptsSessionRoute
 }
@@ -126,12 +150,15 @@ export interface FileRoutesById {
   '/chat': typeof ChatRoute
   '/transcripts': typeof TranscriptsRoute
   '/api/chat': typeof ApiChatRouteWithChildren
+  '/api/graph': typeof ApiGraphRouteWithChildren
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
   '/api/captions/meetings': typeof ApiCaptionsMeetingsRoute
   '/api/captions/prepare': typeof ApiCaptionsPrepareRoute
   '/api/captions/recordings': typeof ApiCaptionsRecordingsRoute
   '/api/captions/stream': typeof ApiCaptionsStreamRoute
   '/api/chat/status': typeof ApiChatStatusRoute
+  '/api/graph/events': typeof ApiGraphEventsRoute
+  '/api/graph/history': typeof ApiGraphHistoryRoute
   '/api/transcripts/export': typeof ApiTranscriptsExportRoute
   '/api/transcripts/session': typeof ApiTranscriptsSessionRoute
 }
@@ -143,12 +170,15 @@ export interface FileRouteTypes {
     | '/chat'
     | '/transcripts'
     | '/api/chat'
+    | '/api/graph'
     | '/api/transcripts'
     | '/api/captions/meetings'
     | '/api/captions/prepare'
     | '/api/captions/recordings'
     | '/api/captions/stream'
     | '/api/chat/status'
+    | '/api/graph/events'
+    | '/api/graph/history'
     | '/api/transcripts/export'
     | '/api/transcripts/session'
   fileRoutesByTo: FileRoutesByTo
@@ -158,12 +188,15 @@ export interface FileRouteTypes {
     | '/chat'
     | '/transcripts'
     | '/api/chat'
+    | '/api/graph'
     | '/api/transcripts'
     | '/api/captions/meetings'
     | '/api/captions/prepare'
     | '/api/captions/recordings'
     | '/api/captions/stream'
     | '/api/chat/status'
+    | '/api/graph/events'
+    | '/api/graph/history'
     | '/api/transcripts/export'
     | '/api/transcripts/session'
   id:
@@ -173,12 +206,15 @@ export interface FileRouteTypes {
     | '/chat'
     | '/transcripts'
     | '/api/chat'
+    | '/api/graph'
     | '/api/transcripts'
     | '/api/captions/meetings'
     | '/api/captions/prepare'
     | '/api/captions/recordings'
     | '/api/captions/stream'
     | '/api/chat/status'
+    | '/api/graph/events'
+    | '/api/graph/history'
     | '/api/transcripts/export'
     | '/api/transcripts/session'
   fileRoutesById: FileRoutesById
@@ -189,6 +225,7 @@ export interface RootRouteChildren {
   ChatRoute: typeof ChatRoute
   TranscriptsRoute: typeof TranscriptsRoute
   ApiChatRoute: typeof ApiChatRouteWithChildren
+  ApiGraphRoute: typeof ApiGraphRouteWithChildren
   ApiTranscriptsRoute: typeof ApiTranscriptsRouteWithChildren
   ApiCaptionsMeetingsRoute: typeof ApiCaptionsMeetingsRoute
   ApiCaptionsPrepareRoute: typeof ApiCaptionsPrepareRoute
@@ -233,6 +270,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/graph': {
+      id: '/api/graph'
+      path: '/api/graph'
+      fullPath: '/api/graph'
+      preLoaderRoute: typeof ApiGraphRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/transcripts': {
       id: '/api/transcripts'
       path: '/api/transcripts'
@@ -275,6 +319,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatStatusRouteImport
       parentRoute: typeof ApiChatRoute
     }
+    '/api/graph/events': {
+      id: '/api/graph/events'
+      path: '/events'
+      fullPath: '/api/graph/events'
+      preLoaderRoute: typeof ApiGraphEventsRouteImport
+      parentRoute: typeof ApiGraphRoute
+    }
+    '/api/graph/history': {
+      id: '/api/graph/history'
+      path: '/history'
+      fullPath: '/api/graph/history'
+      preLoaderRoute: typeof ApiGraphHistoryRouteImport
+      parentRoute: typeof ApiGraphRoute
+    }
     '/api/transcripts/export': {
       id: '/api/transcripts/export'
       path: '/export'
@@ -303,6 +361,20 @@ const ApiChatRouteChildren: ApiChatRouteChildren = {
 const ApiChatRouteWithChildren =
   ApiChatRoute._addFileChildren(ApiChatRouteChildren)
 
+interface ApiGraphRouteChildren {
+  ApiGraphEventsRoute: typeof ApiGraphEventsRoute
+  ApiGraphHistoryRoute: typeof ApiGraphHistoryRoute
+}
+
+const ApiGraphRouteChildren: ApiGraphRouteChildren = {
+  ApiGraphEventsRoute: ApiGraphEventsRoute,
+  ApiGraphHistoryRoute: ApiGraphHistoryRoute,
+}
+
+const ApiGraphRouteWithChildren = ApiGraphRoute._addFileChildren(
+  ApiGraphRouteChildren,
+)
+
 interface ApiTranscriptsRouteChildren {
   ApiTranscriptsExportRoute: typeof ApiTranscriptsExportRoute
   ApiTranscriptsSessionRoute: typeof ApiTranscriptsSessionRoute
@@ -323,6 +395,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChatRoute: ChatRoute,
   TranscriptsRoute: TranscriptsRoute,
   ApiChatRoute: ApiChatRouteWithChildren,
+  ApiGraphRoute: ApiGraphRouteWithChildren,
   ApiTranscriptsRoute: ApiTranscriptsRouteWithChildren,
   ApiCaptionsMeetingsRoute: ApiCaptionsMeetingsRoute,
   ApiCaptionsPrepareRoute: ApiCaptionsPrepareRoute,

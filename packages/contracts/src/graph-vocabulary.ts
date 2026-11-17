@@ -21,7 +21,8 @@ export type GraphErrorCode =
   | "missing_rationale"
   | "unknown_caption"
   | "unknown_person"
-  | "merge_mismatch";
+  | "merge_mismatch"
+  | "outranked";
 
 /** A change the graph's rules refuse. Everything else thrown is a bug or an I/O failure. */
 export class GraphRuleError extends Error {
@@ -343,12 +344,31 @@ export const roleAllowed = (role: PersonRole, type: NodeType): boolean =>
 // Provenance
 // ---------------------------------------------------------------------------------------------
 
-/** `stated`: somebody said it. `inferred`: the system concluded it, and must say why. */
-export const ORIGINS = ["stated", "inferred"] as const;
+/**
+ * Who a node, edge or change comes from. `stated`: somebody said it. `inferred`: the system concluded
+ * it, and must say why. `human`: a person confirmed or edited it. A change can only overwrite
+ * something of equal or lower rank, so people always have the final say.
+ */
+export const ORIGINS = ["inferred", "stated", "human"] as const;
 export type Origin = (typeof ORIGINS)[number];
 
 export const isOrigin = (value: unknown): value is Origin =>
   typeof value === "string" && (ORIGINS as readonly string[]).includes(value);
+
+/** `human` > `stated` > `inferred`. */
+export const originRank = (origin: Origin): number => ORIGINS.indexOf(origin);
+
+/** Whether a change from `source` may overwrite something of origin `target`. */
+export const mayOverwrite = (source: Origin, target: Origin): boolean =>
+  originRank(source) >= originRank(target);
+
+/** The statuses that make a node a thread somebody may still pick up, per node type. */
+export const OPEN_THREAD_STATUSES: { [T in NodeType]?: readonly StatusOf<T>[] } = {
+  question: ["open", "deferred"],
+  decision: ["tentative", "challenged"],
+  action: ["intent", "requested", "committed", "orphaned"],
+  claim: ["contested"],
+};
 
 // ---------------------------------------------------------------------------------------------
 // Status preconditions

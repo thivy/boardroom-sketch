@@ -33,6 +33,7 @@ const OPS = [
   "delete_edge",
   "link_person",
   "unlink_person",
+  "add_evidence",
 ];
 
 const steps: string[] = [
@@ -60,6 +61,7 @@ const steps: string[] = [
   );
   CREATE INDEX graph_nodes_by_meeting ON graph_nodes(meeting_id, created_at);
   CREATE INDEX graph_nodes_by_topic ON graph_nodes(topic_id);
+  CREATE INDEX graph_nodes_merged ON graph_nodes(merged_into);
 
   CREATE TABLE graph_edges (
     id TEXT PRIMARY KEY,
@@ -71,6 +73,7 @@ const steps: string[] = [
     origin TEXT NOT NULL CHECK (origin IN (${list(ORIGINS)})),
     confidence REAL NOT NULL DEFAULT 1 CHECK (confidence >= 0 AND confidence <= 1),
     rationale TEXT,
+    folded_into TEXT REFERENCES graph_edges(id) ON DELETE CASCADE,
     deleted_at INTEGER,
     created_at INTEGER NOT NULL,
     FOREIGN KEY (src_id, meeting_id) REFERENCES graph_nodes(id, meeting_id) ON DELETE CASCADE,
@@ -85,6 +88,7 @@ const steps: string[] = [
   CREATE UNIQUE INDEX graph_edges_unique ON graph_edges(src_id, dst_id, type) WHERE deleted_at IS NULL;
   CREATE INDEX graph_edges_by_dst ON graph_edges(dst_id, type);
   CREATE INDEX graph_edges_by_meeting ON graph_edges(meeting_id);
+  CREATE INDEX graph_edges_folded ON graph_edges(folded_into);
 
   CREATE TABLE graph_node_person (
     node_id TEXT NOT NULL REFERENCES graph_nodes(id) ON DELETE CASCADE,
@@ -99,6 +103,7 @@ const steps: string[] = [
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     meeting_id TEXT NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
     kind TEXT NOT NULL CHECK (kind IN (${list(OPS)})),
+    source TEXT NOT NULL CHECK (source IN (${list(ORIGINS)})),
     node_id TEXT REFERENCES graph_nodes(id) ON DELETE CASCADE,
     edge_id TEXT REFERENCES graph_edges(id) ON DELETE CASCADE,
     detail TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(detail)),

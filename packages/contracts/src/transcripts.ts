@@ -54,3 +54,14 @@ export type ActiveRecording = {
   /** Whether live captions are switched on, once the source has said. */
   captionsVisible?: boolean;
 };
+
+/**
+ * Something that follows recordings as they happen, such as the graph pipeline. Observers are told
+ * only after a caption is saved, and a failing observer never disturbs the recording.
+ */
+export interface RecordingObserver {
+  /** A caption line was saved; it is called again as the line's text grows. */
+  caption(recording: ActiveRecording, caption: Caption): void;
+  /** The recording ended: it was stopped, or the meeting went away. */
+  ended(recording: ActiveRecording): void;
+}
