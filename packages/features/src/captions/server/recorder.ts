@@ -130,3 +130,5 @@ export function createRecorder(
     },
   };
 }
+
+export type Recorder = ReturnType<typeof createRecorder>;
