@@ -6,8 +6,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@app/components/components/alert-dialog";
-import { Button, buttonVariants } from "@app/components/components/button";
+} from "@app/ui/components/alert-dialog";
+import { Button, buttonVariants } from "@app/ui/components/button";
 import type { GraphBuildStatus, StoredSession } from "@app/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LoaderCircleIcon, NetworkIcon, SquareIcon } from "lucide-react";

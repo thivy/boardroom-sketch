@@ -1,4 +1,4 @@
-import { cn } from "@app/components/lib/utils";
+import { cn } from "@app/ui/lib/utils";
 import type { GraphNode, GraphOp, MeetingGraph, NodeType } from "@app/contracts";
 import { NODE_TYPES } from "@app/contracts";
 import { ArrowRightIcon, GitBranchIcon, PlusIcon, Trash2Icon } from "lucide-react";

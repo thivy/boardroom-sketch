@@ -1,5 +1,5 @@
-import { Switch } from "@app/components/components/switch";
-import { cn } from "@app/components/lib/utils";
+import { Switch } from "@app/ui/components/switch";
+import { cn } from "@app/ui/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 type LiveGraph = { enabled: boolean };

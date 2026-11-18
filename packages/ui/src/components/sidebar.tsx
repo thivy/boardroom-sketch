@@ -4,21 +4,21 @@ import * as React from "react";
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@app/components/lib/utils";
+import { cn } from "@app/ui/lib/utils";
 
-import { useIsMobile } from "@app/components/hooks/use-mobile";
-import { Button } from "@app/components/components/button";
-import { Input } from "@app/components/components/input";
-import { Separator } from "@app/components/components/separator";
+import { useIsMobile } from "@app/ui/hooks/use-mobile";
+import { Button } from "@app/ui/components/button";
+import { Input } from "@app/ui/components/input";
+import { Separator } from "@app/ui/components/separator";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@app/components/components/sheet";
-import { Skeleton } from "@app/components/components/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/components/tooltip";
+} from "@app/ui/components/sheet";
+import { Skeleton } from "@app/ui/components/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@app/ui/components/tooltip";
 import { PanelLeftIcon } from "lucide-react";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";

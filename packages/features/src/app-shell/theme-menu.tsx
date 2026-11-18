@@ -1,6 +1,6 @@
 "use client";
 
-import { SidebarMenuButton, SidebarMenuItem } from "@app/components/components/sidebar";
+import { SidebarMenuButton, SidebarMenuItem } from "@app/ui/components/sidebar";
 import { MoonIcon, SunIcon } from "lucide-react";
 import { useSyncExternalStore } from "react";
 

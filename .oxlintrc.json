@@ -118,8 +118,8 @@
                 "group": [
                   "@app/features",
                   "@app/features/**",
-                  "@app/components",
-                  "@app/components/**",
+                  "@app/ui",
+                  "@app/ui/**",
                   "react",
                   "react-dom",
                   "@tanstack/*"
@@ -145,8 +145,8 @@
                   "react-dom",
                   "lucide-react",
                   "@tanstack/*",
-                  "@app/components",
-                  "@app/components/**",
+                  "@app/ui",
+                  "@app/ui/**",
                   "@app/teams-cdp",
                   "@app/teams-cdp/**",
                   "@app/storage-sqlite",

@@ -1,4 +1,4 @@
-import { Button } from "@app/components/components/button";
+import { Button } from "@app/ui/components/button";
 import { DownloadIcon, LoaderCircleIcon } from "lucide-react";
 import { useAppUpdate } from "./use-app-update";
 

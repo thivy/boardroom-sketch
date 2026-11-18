@@ -1,6 +1,6 @@
 import { EDGE_RULES, type GraphEdge, type MeetingGraph, type NodeType } from "@app/contracts";
-import { Button } from "@app/components/components/button";
-import { cn } from "@app/components/lib/utils";
+import { Button } from "@app/ui/components/button";
+import { cn } from "@app/ui/lib/utils";
 import { CheckIcon, MaximizeIcon, MinusIcon, PlusIcon } from "lucide-react";
 import {
   type PointerEvent,

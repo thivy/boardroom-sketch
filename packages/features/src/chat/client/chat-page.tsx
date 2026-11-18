@@ -1,4 +1,4 @@
-import { Button } from "@app/components/components/button";
+import { Button } from "@app/ui/components/button";
 import {
   Combobox,
   ComboboxContent,
@@ -6,9 +6,9 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
-} from "@app/components/components/combobox";
-import { Textarea } from "@app/components/components/textarea";
-import { cn } from "@app/components/lib/utils";
+} from "@app/ui/components/combobox";
+import { Textarea } from "@app/ui/components/textarea";
+import { cn } from "@app/ui/lib/utils";
 import type { ChatStatus, StoredMeeting } from "@app/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { PlusIcon, SendIcon, SquareIcon } from "lucide-react";

@@ -9,7 +9,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@app/components/components/sidebar";
+} from "@app/ui/components/sidebar";
 import type { NavItem } from "./app-shell";
 import { ThemeMenuItem } from "./theme-menu";
 

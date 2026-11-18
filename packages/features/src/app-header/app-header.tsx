@@ -1,4 +1,4 @@
-import { SidebarTrigger } from "@app/components/components/sidebar";
+import { SidebarTrigger } from "@app/ui/components/sidebar";
 
 export type AppHeaderProps = {
   title: string;

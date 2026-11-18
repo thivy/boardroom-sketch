@@ -16,7 +16,7 @@ export type CopilotModelOptions = {
  * is left out: it answered the typed prompts with empty placeholders (it picks the smallest branch of
  * an `anyOf`).
  */
-const PREFERRED = ["gpt-5.6-luna", "mai-code-2-flash", "gpt-5.6-sol-fast"];
+const PREFERRED = ["gpt-5.6-luna", "mai-code-2-flash"];
 
 /** The answer, parsed; some models wrap JSON in a code fence even when asked for JSON only. */
 function parseJson(text: string): unknown {

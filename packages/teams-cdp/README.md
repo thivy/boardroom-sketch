@@ -12,7 +12,7 @@ import { teamsCdp } from "@app/teams-cdp";
 const source = teamsCdp(); // or teamsCdp({ port: 9333 }); the default is TEAMS_CDP_PORT, then 9222
 ```
 
-The package must not import `@app/features`, `@app/components`, React or a web framework (oxlint enforces this).
+The package must not import `@app/features`, `@app/ui`, React or a web framework (oxlint enforces this).
 
 ## Architecture
 

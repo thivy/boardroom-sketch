@@ -1,14 +1,14 @@
-import { Button } from "@app/components/components/button";
+import { Button } from "@app/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-} from "@app/components/components/dropdown-menu";
-import { Empty, EmptyDescription, EmptyHeader } from "@app/components/components/empty";
-import { Input } from "@app/components/components/input";
-import { cn } from "@app/components/lib/utils";
+} from "@app/ui/components/dropdown-menu";
+import { Empty, EmptyDescription, EmptyHeader } from "@app/ui/components/empty";
+import { Input } from "@app/ui/components/input";
+import { cn } from "@app/ui/lib/utils";
 import type { NodeType } from "@app/contracts";
 import { ChevronsUpDownIcon, NetworkIcon, SearchIcon, XIcon } from "lucide-react";
 import { useState } from "react";

@@ -6,10 +6,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@app/components/components/alert-dialog";
-import { Button, buttonVariants } from "@app/components/components/button";
-import { Empty, EmptyDescription, EmptyHeader } from "@app/components/components/empty";
-import { cn } from "@app/components/lib/utils";
+} from "@app/ui/components/alert-dialog";
+import { Button, buttonVariants } from "@app/ui/components/button";
+import { Empty, EmptyDescription, EmptyHeader } from "@app/ui/components/empty";
+import { cn } from "@app/ui/lib/utils";
 import type { Meeting, SessionTranscript, StoredMeeting, StoredSession } from "@app/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DownloadIcon, LoaderCircleIcon, Trash2Icon } from "lucide-react";

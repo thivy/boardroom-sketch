@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@app/components": "workspace:*",
+    "@app/ui": "workspace:*",
     "@app/contracts": "workspace:*",
     "@app/copilot-sdk": "workspace:*",
     "@app/features": "workspace:*",

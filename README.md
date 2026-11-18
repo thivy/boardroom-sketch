@@ -6,7 +6,7 @@ A [Bun](https://bun.sh) workspaces monorepo: a thin [TanStack Start](https://tan
 apps/web             TanStack Start app: root route and page routes. Nothing else.
 packages/features    One folder per feature: `app-shell` (sidebar layout) and `app-header`.
 apps/desktop         Tauri shell: a native window on the web app, which runs as a bundled Node sidecar.
-packages/components  shadcn components, `cn()` helper and the Tailwind theme (`styles.css`).
+packages/ui  shadcn components, `cn()` helper and the Tailwind theme (`styles.css`).
 packages/contracts   Types shared by client, server and adapters, including the `CaptionSource` port.
 packages/teams-cdp   Interim `CaptionSource` that reads Teams captions over the Chrome DevTools Protocol.
 packages/copilot-sdk       `getCopilotStatus` and `createCopilotSession` (the chat ports) and `copilotModel`, through the GitHub Copilot SDK.

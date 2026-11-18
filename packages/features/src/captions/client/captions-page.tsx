@@ -1,4 +1,4 @@
-import { Button } from "@app/components/components/button";
+import { Button } from "@app/ui/components/button";
 import {
   Combobox,
   ComboboxContent,
@@ -6,7 +6,7 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
-} from "@app/components/components/combobox";
+} from "@app/ui/components/combobox";
 import type { ActiveRecording, Caption, Meeting } from "@app/contracts";
 import { AppHeader } from "../../app-header";
 import { useMutation, useQuery } from "@tanstack/react-query";

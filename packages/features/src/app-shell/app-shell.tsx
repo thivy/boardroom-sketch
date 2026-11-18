@@ -1,4 +1,4 @@
-import { SidebarInset, SidebarProvider } from "@app/components/components/sidebar";
+import { SidebarInset, SidebarProvider } from "@app/ui/components/sidebar";
 import type { LucideIcon } from "lucide-react";
 import type { ReactElement, ReactNode } from "react";
 import { AppSidebar } from "./app-sidebar";
