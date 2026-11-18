@@ -116,6 +116,7 @@ bun run dev # http://localhost:3000
 | `bun run start`     | Serve the production build (Nitro) |
 | `bun run typecheck` | Typecheck every workspace          |
 | `bun run lint`      | oxlint                             |
+| `bun run lint:types`| oxlint with tsrs: type-aware rules and a fast type check (beta; `typecheck` stays the reference) |
 | `bun run fmt`       | oxfmt (`fmt:check` to verify)      |
 | `bun test`          | Run package tests (`bun:test`)     |
 
