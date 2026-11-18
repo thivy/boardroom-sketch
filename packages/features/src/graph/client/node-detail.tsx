@@ -1,4 +1,5 @@
 import type { GraphNode, GraphOp, MeetingGraph } from "@app/contracts";
+import { useMemo } from "react";
 import { Card, StatusPill, time } from "./panel-parts";
 import { useNodeHistory } from "./use-live-graph";
 import {
@@ -46,15 +47,17 @@ export function NodeDetail({
 }) {
   const history = useNodeHistory(node.id, node.updatedAt);
   const visual = NODE_VISUALS[node.type];
-  const byId = new Map(graph.nodes.map((item) => [item.id, item]));
-  const connections = graph.edges
-    .filter((edge) => edge.srcId === node.id || edge.dstId === node.id)
-    .map((edge) => {
-      const outgoing = edge.srcId === node.id;
-      const other = byId.get(outgoing ? edge.dstId : edge.srcId);
-      return { edge, outgoing, other };
-    })
-    .filter((item) => item.other);
+  const connections = useMemo(() => {
+    const byId = new Map(graph.nodes.map((item) => [item.id, item]));
+    return graph.edges
+      .filter((edge) => edge.srcId === node.id || edge.dstId === node.id)
+      .map((edge) => {
+        const outgoing = edge.srcId === node.id;
+        const other = byId.get(outgoing ? edge.dstId : edge.srcId);
+        return { edge, outgoing, other };
+      })
+      .filter((item) => item.other);
+  }, [graph, node.id]);
   const ops = [...(history.data ?? [])].reverse();
 
   return (

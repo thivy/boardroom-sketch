@@ -22,7 +22,11 @@ export function ThemeMenuItem() {
 
   function toggle() {
     document.documentElement.dataset.theme = next;
-    localStorage.setItem("theme", next);
+    try {
+      localStorage.setItem("theme", next);
+    } catch {
+      // Storage can be blocked (private mode); the theme still switches for this visit.
+    }
   }
 
   return (

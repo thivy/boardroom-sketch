@@ -52,12 +52,15 @@ export function Overview({
   onToggleType: (type: NodeType) => void;
 }) {
   const total = graph.nodes.length;
-  const counts = NODE_TYPES.map(
-    (type) => [type, graph.nodes.filter((node) => node.type === type).length] as [NodeType, number],
-  );
-  const present = counts.filter(([, count]) => count > 0);
+  // One pass over the nodes for both the per-type counts and the per-tone counts.
+  const countByType = new Map<NodeType, number>();
   const tones: Record<Tone, number> = { open: 0, resolved: 0, contested: 0, dead: 0 };
-  for (const node of graph.nodes) tones[toneOf(node.status)]++;
+  for (const node of graph.nodes) {
+    countByType.set(node.type, (countByType.get(node.type) ?? 0) + 1);
+    tones[toneOf(node.status)]++;
+  }
+  const counts = NODE_TYPES.map((type) => [type, countByType.get(type) ?? 0] as [NodeType, number]);
+  const present = counts.filter(([, count]) => count > 0);
   const live = total - tones.dead;
 
   return (

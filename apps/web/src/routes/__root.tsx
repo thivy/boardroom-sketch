@@ -37,20 +37,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   component: RootComponent,
 });
 
+const NAV_ITEMS = [
+  { label: "Teams captions", icon: CaptionsIcon, link: <Link to="/captions" /> },
+  { label: "Transcripts", icon: FileTextIcon, link: <Link to="/transcripts" /> },
+  { label: "Meeting graph", icon: NetworkIcon, link: <Link to="/graph" /> },
+  { label: "Analysis chat", icon: MessageSquareIcon, link: <Link to="/chat" /> },
+];
+
 function RootComponent() {
   const { sidebarOpen } = Route.useRouteContext();
 
   return (
     <RootDocument>
-      <AppShell
-        defaultOpen={sidebarOpen}
-        navItems={[
-          { label: "Teams captions", icon: CaptionsIcon, link: <Link to="/captions" /> },
-          { label: "Transcripts", icon: FileTextIcon, link: <Link to="/transcripts" /> },
-          { label: "Meeting graph", icon: NetworkIcon, link: <Link to="/graph" /> },
-          { label: "Analysis chat", icon: MessageSquareIcon, link: <Link to="/chat" /> },
-        ]}
-      >
+      <AppShell defaultOpen={sidebarOpen} navItems={NAV_ITEMS}>
         <Outlet />
         <UpdateBanner />
       </AppShell>

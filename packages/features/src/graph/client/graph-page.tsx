@@ -1,23 +1,12 @@
-import { Button } from "@app/ui/components/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@app/ui/components/dropdown-menu";
 import { Empty, EmptyDescription, EmptyHeader } from "@app/ui/components/empty";
-import { Input } from "@app/ui/components/input";
-import { cn } from "@app/ui/lib/utils";
-import { ChevronsUpDownIcon, NetworkIcon, SearchIcon, XIcon } from "lucide-react";
+import { NetworkIcon } from "lucide-react";
 import { useEffect } from "react";
 import { AppHeader } from "../../app-header";
 import { GraphCanvas } from "./graph-canvas";
+import { BuildStatusBadge, GraphSearch, MeetingMenu } from "./graph-toolbar";
 import {
-  chooseMeeting,
   resetGraphViewStore,
   selectNode,
-  setGraphQuery,
   toggleNodeType,
   useGraphViewStore,
 } from "./graph-view-store";
@@ -27,9 +16,6 @@ import { Overview } from "./overview";
 import { LiveGraphSwitch } from "./live-graph-switch";
 import { resetGraphActivityStore } from "./graph-activity-store";
 import { useLiveGraph, useMeetings } from "./use-live-graph";
-import { useNow } from "./clock-store";
-
-const BUSY_MS = 5000;
 
 function Placeholder({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -52,7 +38,6 @@ export function GraphPage({ meeting: initialMeeting }: { meeting?: string } = {}
   const chosen = useGraphViewStore((state) => state.chosenMeetingId) ?? initialMeeting;
   const selectedId = useGraphViewStore((state) => state.selectedNodeId);
   const hiddenTypes = useGraphViewStore((state) => state.hiddenTypes);
-  const query = useGraphViewStore((state) => state.query);
 
   useEffect(
     () => () => {
@@ -67,10 +52,6 @@ export function GraphPage({ meeting: initialMeeting }: { meeting?: string } = {}
     meeting?.id,
   );
 
-  // "Building" fades back to idle some seconds after the last change.
-  const now = useNow();
-  const building = changedAt !== undefined && now - changedAt < BUSY_MS;
-
   const selected = graph?.nodes.find((node) => node.id === selectedId);
 
   return (
@@ -84,7 +65,6 @@ export function GraphPage({ meeting: initialMeeting }: { meeting?: string } = {}
               key={meeting?.id}
               graph={graph}
               hiddenTypes={hiddenTypes}
-              query={query}
               selectedId={selected?.id}
               fresh={fresh}
               onSelect={selectNode}
@@ -108,91 +88,10 @@ export function GraphPage({ meeting: initialMeeting }: { meeting?: string } = {}
           )}
 
           <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    variant="outline"
-                    className="pointer-events-auto h-9 max-w-[18rem] gap-2 rounded-xl bg-card/80 backdrop-blur"
-                  />
-                }
-              >
-                <span
-                  className={cn(
-                    "size-2 shrink-0 rounded-full",
-                    meeting?.live ? "animate-pulse-soft bg-destructive" : "bg-muted-foreground/50",
-                  )}
-                />
-                <span className="truncate">{meeting?.title ?? "Choose a meeting"}</span>
-                <ChevronsUpDownIcon className="text-muted-foreground" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-80">
-                <DropdownMenuRadioGroup
-                  value={meeting?.id}
-                  onValueChange={(value) => chooseMeeting(value as string)}
-                >
-                  {meetings.map((item) => (
-                    <DropdownMenuRadioItem key={item.id} value={item.id}>
-                      <span
-                        className={cn(
-                          "size-2 shrink-0 rounded-full",
-                          item.live ? "bg-destructive" : "bg-muted-foreground/40",
-                        )}
-                      />
-                      <span className="truncate">{item.title}</span>
-                      {item.live && (
-                        <span className="text-[10px] font-[560] tracking-wider text-destructive uppercase">
-                          live
-                        </span>
-                      )}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {meeting && (
-              <span
-                className={cn(
-                  "pointer-events-auto inline-flex h-9 items-center gap-2 rounded-xl border bg-card/80 px-3 text-xs backdrop-blur",
-                  building ? "text-primary" : "text-muted-foreground",
-                )}
-              >
-                <span
-                  className={cn(
-                    "size-1.5 rounded-full",
-                    building
-                      ? "animate-pulse-soft bg-primary"
-                      : meeting.live
-                        ? "bg-ok"
-                        : "bg-muted-foreground/50",
-                  )}
-                />
-                {building ? "Building…" : meeting.live ? "Live" : "Recorded"}
-              </span>
-            )}
-
+            <MeetingMenu meetings={meetings} meeting={meeting} />
+            <BuildStatusBadge meeting={meeting} changedAt={changedAt} />
             <LiveGraphSwitch className="pointer-events-auto h-9 rounded-xl border bg-card/80 px-3 backdrop-blur" />
-            <div className="pointer-events-auto relative ml-auto w-full max-w-60 min-w-40">
-              <SearchIcon className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(event) => setGraphQuery(event.target.value)}
-                placeholder="Find a node or person"
-                aria-label="Find a node or person"
-                className="h-9 rounded-xl border-border bg-card/80 pr-8 pl-8 backdrop-blur"
-              />
-              {query && (
-                <button
-                  type="button"
-                  aria-label="Clear search"
-                  onClick={() => setGraphQuery("")}
-                  className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <XIcon className="size-3.5" />
-                </button>
-              )}
-            </div>
+            <GraphSearch />
           </div>
         </section>
 

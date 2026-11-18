@@ -18,6 +18,7 @@ import {
   useGraphCanvasStore,
 } from "./graph-canvas-store";
 import { ForceLayout } from "./force-layout";
+import { useGraphViewStore } from "./graph-view-store";
 import {
   FAMILY_VISUALS,
   NODE_VISUALS,
@@ -51,7 +52,6 @@ const truncate = (text: string, max: number) =>
 export type GraphCanvasProps = {
   graph: MeetingGraph;
   hiddenTypes: ReadonlySet<NodeType>;
-  query: string;
   selectedId?: string;
   /** Nodes that just appeared or changed, with when; they get a ring that fades. */
   fresh: ReadonlyMap<string, number>;
@@ -63,12 +63,12 @@ export type GraphCanvasProps = {
 export function GraphCanvas({
   graph,
   hiddenTypes,
-  query,
   selectedId,
   fresh,
   onSelect,
   children,
 }: GraphCanvasProps) {
+  const query = useGraphViewStore((state) => state.query);
   const uid = useId().replaceAll(":", "");
   const svgRef = useRef<SVGSVGElement>(null);
   const worldRef = useRef<SVGGElement>(null);

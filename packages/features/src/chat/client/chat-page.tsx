@@ -1,127 +1,23 @@
-import { Button } from "@app/ui/components/button";
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from "@app/ui/components/combobox";
-import { Textarea } from "@app/ui/components/textarea";
-import { cn } from "@app/ui/lib/utils";
-import type { ChatStatus, StoredMeeting } from "@app/contracts";
-import { useQuery } from "@tanstack/react-query";
-import { PlusIcon, SendIcon, SquareIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, type KeyboardEvent } from "react";
+import { useEffect } from "react";
 import { AppHeader } from "../../app-header";
-import { request } from "../../shared/client/api-request";
-import {
-  resetChatStore,
-  sendChat,
-  setChatDraft,
-  setChatTranscript,
-  startNewChat,
-  stopChat,
-  useChatStore,
-  type TranscriptChoice,
-} from "./chat-store";
-
-const SUGGESTIONS = [
-  "Summarise this meeting in five bullet points.",
-  "List the action items and who owns them.",
-  "What decisions were made?",
-  "What questions were left unanswered?",
-];
-
-function toChoices(meetings: StoredMeeting[]): TranscriptChoice[] {
-  return meetings.flatMap((meeting) =>
-    meeting.sessions.map((session) => ({
-      id: session.id,
-      label: `${meeting.title} · ${new Date(session.startedAt).toLocaleString()} · ${session.captionCount} lines`,
-    })),
-  );
-}
+import { ChatComposer } from "./chat-composer";
+import { ChatMessages } from "./chat-messages";
+import { resetChatStore } from "./chat-store";
+import { ChatToolbar } from "./chat-toolbar";
+import { useChatStatus } from "./use-chat-status";
 
 export function ChatPage() {
-  const transcript = useChatStore((state) => state.transcript);
-  const draft = useChatStore((state) => state.draft);
-  const messages = useChatStore((state) => state.messages);
-  const busy = useChatStore((state) => state.busy);
-  const end = useRef<HTMLDivElement>(null);
-
   // Leaving the page ends the conversation on the server too.
   useEffect(() => resetChatStore, []);
 
-  const status = useQuery({
-    queryKey: ["chat", "status"],
-    queryFn: () => request<ChatStatus>("/api/chat/status"),
-    staleTime: 60_000,
-    retry: false,
-  });
-  const meetings = useQuery({
-    queryKey: ["transcripts", "meetings"],
-    queryFn: () => request<StoredMeeting[]>("/api/transcripts"),
-    refetchOnMount: "always",
-  });
-  const choices = useMemo(() => toChoices(meetings.data ?? []), [meetings.data]);
-  const started = messages.length > 0;
+  const status = useChatStatus();
   const unavailable = status.data?.available === false;
-
-  useEffect(() => {
-    end.current?.scrollIntoView({ block: "end" });
-  }, [messages]);
-
-  function submit(text: string) {
-    if (!text.trim() || busy || unavailable) return;
-    setChatDraft("");
-    void sendChat(text);
-  }
-
-  function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-      event.preventDefault();
-      submit(draft);
-    }
-  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <AppHeader title="Analysis chat" />
 
-      <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3">
-        <Combobox
-          items={choices}
-          value={transcript}
-          onValueChange={setChatTranscript}
-          itemToStringLabel={(item: TranscriptChoice) => item.label}
-          isItemEqualToValue={(a: TranscriptChoice, b: TranscriptChoice) => a.id === b.id}
-          disabled={started}
-        >
-          <ComboboxInput
-            aria-label="Transcript to analyse"
-            placeholder="Transcript to analyse (optional)"
-            showClear
-            className="min-w-72 max-w-xl flex-1"
-          />
-          <ComboboxContent>
-            <ComboboxEmpty>No transcripts saved yet.</ComboboxEmpty>
-            <ComboboxList>
-              {(item: TranscriptChoice) => (
-                <ComboboxItem key={item.id} value={item}>
-                  {item.label}
-                </ComboboxItem>
-              )}
-            </ComboboxList>
-          </ComboboxContent>
-        </Combobox>
-        <Button variant="outline" disabled={!started} onClick={startNewChat}>
-          <PlusIcon />
-          New chat
-        </Button>
-        <span className="ml-auto text-xs text-muted-foreground">
-          {status.isLoading ? "Checking Copilot…" : (status.data?.account ?? "")}
-        </span>
-      </div>
+      <ChatToolbar />
 
       {unavailable && (
         <p role="alert" className="border-b bg-destructive/10 px-4 py-2 text-sm text-destructive">
@@ -129,76 +25,9 @@ export function ChatPage() {
         </p>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        {!started ? (
-          <div className="mx-auto grid max-w-2xl gap-3 pt-8">
-            <p className="text-sm text-muted-foreground">
-              {transcript
-                ? "Ask about the transcript you chose, or start with one of these."
-                : "Ask anything, or choose a saved transcript above to analyse it."}
-            </p>
-            {transcript && (
-              <div className="flex flex-wrap gap-2">
-                {SUGGESTIONS.map((text) => (
-                  <Button key={text} variant="outline" size="sm" onClick={() => submit(text)}>
-                    {text}
-                  </Button>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          <ul className="mx-auto grid max-w-3xl gap-4">
-            {messages.map(({ id, role, text, failed }) => (
-              <li key={id} className={cn("flex", role === "user" && "justify-end")}>
-                <div
-                  className={cn(
-                    "max-w-[85%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap",
-                    role === "user" ? "bg-primary text-primary-foreground" : "bg-muted",
-                    failed && "bg-destructive/10 text-destructive",
-                  )}
-                >
-                  {text || <span className="text-muted-foreground">Thinking…</span>}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div ref={end} />
-      </div>
+      <ChatMessages />
 
-      <div className="border-t p-3">
-        <div className="mx-auto flex max-w-3xl items-end gap-2">
-          <Textarea
-            aria-label="Message"
-            placeholder={
-              unavailable
-                ? "Copilot is not available"
-                : "Message (Enter to send, Shift+Enter for a new line)"
-            }
-            className="max-h-40 min-h-10 flex-1 resize-none"
-            rows={1}
-            value={draft}
-            disabled={unavailable}
-            onChange={(event) => setChatDraft(event.target.value)}
-            onKeyDown={onKeyDown}
-          />
-          {busy ? (
-            <Button variant="secondary" size="icon" aria-label="Stop" onClick={stopChat}>
-              <SquareIcon />
-            </Button>
-          ) : (
-            <Button
-              size="icon"
-              aria-label="Send"
-              disabled={!draft.trim() || unavailable}
-              onClick={() => submit(draft)}
-            >
-              <SendIcon />
-            </Button>
-          )}
-        </div>
-      </div>
+      <ChatComposer />
     </div>
   );
 }

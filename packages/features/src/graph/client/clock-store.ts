@@ -25,3 +25,9 @@ export function useNow() {
   useEffect(startClock, []);
   return useClockStore((state) => state.now);
 }
+
+/** Whether `at` is within `windowMs` of now. Re-renders only when that flips, not on every tick. */
+export function useRecently(at: number | undefined, windowMs: number) {
+  useEffect(startClock, []);
+  return useClockStore((state) => at !== undefined && state.now - at < windowMs);
+}

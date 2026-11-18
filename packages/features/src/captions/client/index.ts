@@ -1,2 +1,2 @@
 export { CaptionsPage } from "./captions-page";
-export { TranscriptsPage } from "./transcripts-page";
+export { TranscriptsPage, type SessionActions } from "./transcripts-page";

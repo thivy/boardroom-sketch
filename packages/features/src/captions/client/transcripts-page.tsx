@@ -1,129 +1,18 @@
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@app/ui/components/alert-dialog";
-import { Button, buttonVariants } from "@app/ui/components/button";
 import { Empty, EmptyDescription, EmptyHeader } from "@app/ui/components/empty";
-import { cn } from "@app/ui/lib/utils";
-import type { Meeting, SessionTranscript, StoredMeeting, StoredSession } from "@app/contracts";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { DownloadIcon, LoaderCircleIcon, Trash2Icon } from "lucide-react";
-import { useEffect, type ReactNode } from "react";
+import type { StoredMeeting } from "@app/contracts";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { AppHeader } from "../../app-header";
 import { request } from "../../shared/client/api-request";
-import {
-  askToDelete,
-  cancelDelete,
-  finishDelete,
-  resetTranscriptStore,
-  selectSession,
-  useTranscriptStore,
-} from "./transcript-store";
+import { DeleteTranscriptDialog } from "./delete-transcript-dialog";
+import { SessionDetail, type SessionActions } from "./session-detail";
+import { SessionList } from "./session-list";
+import { askToDelete, resetTranscriptStore, useTranscriptStore } from "./transcript-store";
 
-/** What the page offers on a session besides export and delete; the app decides what goes here. */
-export type SessionActions = (context: { session: StoredSession; meeting: Meeting }) => ReactNode;
-
-const stamp = (at: number) => new Date(at).toLocaleString();
-const time = (at: number) => new Date(at).toLocaleTimeString();
-
-function sessionLabel({ startedAt, endedAt, captionCount }: StoredSession) {
-  const range = endedAt
-    ? `${stamp(startedAt)} – ${time(endedAt)}`
-    : `${stamp(startedAt)} · recording`;
-  return `${range} · ${captionCount} lines`;
-}
-
-function Detail({
-  sessionId,
-  onDelete,
-  actions,
-}: {
-  sessionId: number;
-  onDelete: () => void;
-  actions?: SessionActions;
-}) {
-  const transcript = useQuery({
-    queryKey: ["transcripts", "session", sessionId],
-    queryFn: () => request<SessionTranscript>(`/api/transcripts/session?session=${sessionId}`),
-    // A session that is still recording keeps growing.
-    refetchInterval: (query) => (query.state.data?.session.endedAt === null ? 3000 : false),
-  });
-
-  if (transcript.isError) {
-    return (
-      <p role="alert" className="p-4 text-sm text-destructive">
-        {transcript.error.message}
-      </p>
-    );
-  }
-  if (!transcript.data) return <p className="p-4 text-sm text-muted-foreground">Loading…</p>;
-
-  const { meeting, session, captions } = transcript.data;
-  const download = (format: string) =>
-    `/api/transcripts/export?session=${session.id}&format=${format}`;
-
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
-        <div className="min-w-0">
-          <div className="truncate text-sm font-[560]">{meeting.title}</div>
-          <div className="text-xs text-muted-foreground">{sessionLabel(session)}</div>
-        </div>
-        <div className="flex flex-wrap items-center gap-1">
-          {actions?.({ session, meeting })}
-          {(["txt", "md", "json"] as const).map((format) => (
-            <a
-              key={format}
-              href={download(format)}
-              download
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              <DownloadIcon />
-              {format}
-            </a>
-          ))}
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Delete session"
-            disabled={session.endedAt === null}
-            title={session.endedAt === null ? "Stop the recording first" : undefined}
-            onClick={onDelete}
-          >
-            <Trash2Icon />
-          </Button>
-        </div>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        {captions.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No captions were captured.</p>
-        ) : (
-          <ul className="grid gap-3">
-            {captions.map(({ id, speaker, text, at }) => (
-              <li key={id}>
-                <div className="text-xs font-[560] text-muted-foreground">
-                  {speaker || "Unknown"} · {time(at)}
-                </div>
-                <div>{text}</div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
-}
+export type { SessionActions } from "./session-detail";
 
 export function TranscriptsPage({ actions }: { actions?: SessionActions } = {}) {
-  const queryClient = useQueryClient();
   const selected = useTranscriptStore((state) => state.selectedSessionId);
-  const deleting = useTranscriptStore((state) => state.deleting);
 
   useEffect(() => resetTranscriptStore, []);
 
@@ -131,16 +20,6 @@ export function TranscriptsPage({ actions }: { actions?: SessionActions } = {}) 
     queryKey: ["transcripts", "meetings"],
     queryFn: () => request<StoredMeeting[]>("/api/transcripts"),
     refetchOnMount: "always",
-  });
-
-  const deletion = useMutation({
-    mutationKey: ["transcripts", "delete"],
-    mutationFn: (sessionId: number) =>
-      request(`/api/transcripts/session?session=${sessionId}`, { method: "DELETE" }),
-    onSuccess: async (_, sessionId) => {
-      finishDelete(sessionId);
-      await queryClient.invalidateQueries({ queryKey: ["transcripts"] });
-    },
   });
 
   return (
@@ -165,36 +44,13 @@ export function TranscriptsPage({ actions }: { actions?: SessionActions } = {}) 
 
       {meetings.data && meetings.data.length > 0 && (
         <div className="grid min-h-0 flex-1 md:grid-cols-[22rem_1fr]">
-          <div className="min-h-0 overflow-y-auto border-b md:border-r md:border-b-0">
-            {meetings.data.map((meeting) => (
-              <section key={meeting.id} className="border-b p-3">
-                <h2 className="px-2 pb-1 text-[13px] font-[560]">{meeting.title}</h2>
-                <ul className="grid gap-0.5">
-                  {meeting.sessions.map((session) => (
-                    <li key={session.id}>
-                      <button
-                        type="button"
-                        aria-current={session.id === selected ? "true" : undefined}
-                        onClick={() => selectSession(session.id)}
-                        className={cn(
-                          "w-full rounded-lg px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground",
-                          session.id === selected && "bg-muted text-foreground",
-                        )}
-                      >
-                        {sessionLabel(session)}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ))}
-          </div>
+          <SessionList meetings={meetings.data} />
 
           <div className="min-h-0">
             {selected === undefined ? (
               <p className="p-4 text-sm text-muted-foreground">Choose a session to read it.</p>
             ) : (
-              <Detail
+              <SessionDetail
                 key={selected}
                 sessionId={selected}
                 actions={actions}
@@ -202,10 +58,7 @@ export function TranscriptsPage({ actions }: { actions?: SessionActions } = {}) 
                   const session = meetings.data
                     .flatMap((meeting) => meeting.sessions)
                     .find((item) => item.id === selected);
-                  if (session) {
-                    deletion.reset();
-                    askToDelete(session);
-                  }
+                  if (session) askToDelete(session);
                 }}
               />
             )}
@@ -213,38 +66,7 @@ export function TranscriptsPage({ actions }: { actions?: SessionActions } = {}) 
         </div>
       )}
 
-      <AlertDialog
-        open={deleting !== undefined}
-        onOpenChange={(open) => {
-          if (!open && !deletion.isPending) cancelDelete();
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this transcript?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleting && sessionLabel(deleting)} is removed from the database. This can&apos;t be
-              undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {deletion.isError && (
-            <p role="alert" className="text-sm text-destructive">
-              {deletion.error.message}
-            </p>
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deletion.isPending}>Cancel</AlertDialogCancel>
-            <Button
-              variant="destructive"
-              disabled={deletion.isPending}
-              onClick={() => deleting && deletion.mutate(deleting.id)}
-            >
-              {deletion.isPending && <LoaderCircleIcon className="animate-spin" />}
-              Delete
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteTranscriptDialog />
     </div>
   );
 }

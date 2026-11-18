@@ -11,6 +11,9 @@ export type TranscriptChoice = { id: number; label: string };
 
 type Frame = { event: string; data: string };
 
+const EVENT_LINE = /^event: (.*)$/m;
+const DATA_LINE = /^data: (.*)$/m;
+
 const chat = createStore({
   messages: [] as ChatMessage[],
   busy: false,
@@ -31,8 +34,8 @@ function parseFrames(buffer: string): { frames: Frame[]; rest: string } {
   const parts = buffer.split("\n\n");
   const rest = parts.pop() ?? "";
   const frames = parts.flatMap((part) => {
-    const event = /^event: (.*)$/m.exec(part)?.[1];
-    const data = /^data: (.*)$/m.exec(part)?.[1];
+    const event = EVENT_LINE.exec(part)?.[1];
+    const data = DATA_LINE.exec(part)?.[1];
     return event && data !== undefined ? [{ event, data }] : [];
   });
   return { frames, rest };
@@ -121,6 +124,13 @@ export async function sendChat(text: string) {
 }
 
 export const stopChat = () => abort?.abort();
+
+/** Sends what the user typed or picked, unless it is empty, an answer is coming, or chat is unavailable. */
+export function submitChat(text: string, unavailable: boolean) {
+  if (!text.trim() || chat.get().busy || unavailable) return;
+  setChatDraft("");
+  void sendChat(text);
+}
 
 /** Ends the conversation, on the server too, and clears the messages; the transcript choice stays. */
 export function startNewChat() {
