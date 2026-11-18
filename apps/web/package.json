@@ -10,12 +10,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@app/ui": "workspace:*",
     "@app/contracts": "workspace:*",
     "@app/copilot-sdk": "workspace:*",
     "@app/features": "workspace:*",
     "@app/storage-sqlite": "workspace:*",
     "@app/teams-cdp": "workspace:*",
+    "@app/ui": "workspace:*",
     "@github/copilot-sdk": "^1.0.32",
     "@tanstack/react-query": "^5.105.0",
     "@tanstack/react-router": "^1.170.46",
