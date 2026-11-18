@@ -97,15 +97,15 @@ signed-in Copilot account like any other call.
 
 ## Models
 
-Each call is a new session with no tools. The adapter picks a model per tier (`fast` for Triage, `smart`
-for Extract) from `COPILOT_FAST_MODEL` / `COPILOT_SMART_MODEL`, else the first of a short preference list
-that the account has (`gpt-5.6-luna`, `mai-code-2-flash`...). **Do not rely on the runtime's own choice
-(`auto`)**: it answered the typed prompts with placeholders. The schema is the strict form (every
-property required, optional ones nullable) because OpenAI-style models reject anything looser.
+Each call is a new session with no tools. The adapter uses one model for every step: the first of a short
+preference list that the account has (`gpt-5.6-luna`, `mai-code-2-flash`...), set in
+`packages/copilot-sdk/src/model.ts` (or passed to `copilotModel({ model })` where it is wired).
+**Do not rely on the runtime's own choice (`auto`)**: it answered the typed prompts with placeholders. The
+schema is the strict form (every property required, optional ones nullable) because OpenAI-style models
+reject anything looser.
 
-**Reasoning effort** is set per tier too: `COPILOT_FAST_EFFORT` / `COPILOT_SMART_EFFORT`, default `none`.
-It is sent only when the chosen model lists it in `supportedReasoningEfforts` (some models have none, or
-start at `low`), and the effort used is logged with each verdict and run.
+The graph steps set no reasoning effort, so the model's own default applies. Measurements further down show
+a lower effort would make Extract faster.
 
 ## What was measured
 

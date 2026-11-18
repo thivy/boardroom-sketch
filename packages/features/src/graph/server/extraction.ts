@@ -38,7 +38,6 @@ export async function extractTurns(
   const context = extractContext(turns, current, touches);
   const answer = await model.complete(
     {
-      tier: "smart",
       instructions: EXTRACT_INSTRUCTIONS,
       prompt: context.prompt,
       schema: EXTRACT_SCHEMA,
@@ -75,7 +74,6 @@ export async function extractTurns(
     adjustments: plan.adjustments,
     promptChars: context.prompt.length,
     model: answer.model,
-    effort: answer.effort,
     ms: Date.now() - started,
   });
   for (const rejection of rejections)

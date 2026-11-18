@@ -1,72 +1,37 @@
-import type {
-  ChatBackend,
-  ChatEvent,
-  ChatSession,
-  ChatSessionOptions,
-  ChatStatus,
-} from "@app/contracts";
-import type { CopilotSession } from "@github/copilot-sdk";
+import type { ChatEvent, ChatSession, ChatSessionOptions } from "@app/contracts";
+import type { CopilotSession, SessionConfig } from "@github/copilot-sdk";
 import { createHash } from "node:crypto";
 import { NO_TOOLS, copilotClient, emptyWorkingDirectory } from "./runtime";
 
-export type CopilotChatOptions = {
-  /** The model id. Defaults to `COPILOT_MODEL`, then the runtime's own choice. */
-  model?: string;
-};
-
 /**
- * Answers through the GitHub Copilot SDK, which drives the Copilot CLI runtime with the account the
- * machine is already signed in to (`gh auth login`, or `COPILOT_GITHUB_TOKEN`).
+ * Starts a Copilot conversation, or resumes the one `key` names. The runtime picks the model unless
+ * `model` is given.
  */
-export function copilotChat({
-  model = process.env.COPILOT_MODEL || undefined,
-}: CopilotChatOptions = {}): ChatBackend {
-  const getClient = copilotClient;
-
-  return {
-    async status(): Promise<ChatStatus> {
-      try {
-        const auth = await (await getClient()).getAuthStatus();
-        if (auth.isAuthenticated) {
-          return {
-            available: true,
-            account: auth.login,
-            message: auth.statusMessage ?? `Signed in as ${auth.login}`,
-          };
-        }
-        return {
-          available: false,
-          message: "Not signed in to GitHub Copilot. Run `gh auth login` and try again.",
-        };
-      } catch (error) {
-        return {
-          available: false,
-          message: error instanceof Error ? error.message : "Could not start the Copilot runtime.",
-        };
-      }
-    },
-
-    async createSession({ instructions, key }: ChatSessionOptions = {}): Promise<ChatSession> {
-      const copilot = await getClient();
-      const config = {
-        model,
-        streaming: true,
-        workingDirectory: emptyWorkingDirectory(),
-        excludedTools: NO_TOOLS,
-        // Nothing is meant to ask, but if something does, the answer is no.
-        onPermissionRequest: () => ({ kind: "reject" as const }),
-        ...(instructions && { systemMessage: { mode: "append" as const, content: instructions } }),
-      };
-      if (!key) return wrap(await copilot.createSession(config));
-
-      // The same key always maps to the same Copilot session, so a meeting keeps its conversation.
-      const sessionId = `boardroom-${createHash("sha256").update(key).digest("hex").slice(0, 32)}`;
-      if (await copilot.getSessionMetadata(sessionId)) {
-        return wrap(await copilot.resumeSession(sessionId, config));
-      }
-      return wrap(await copilot.createSession({ ...config, sessionId }));
-    },
+export async function createCopilotSession({
+  instructions,
+  model,
+  effort,
+  key,
+}: ChatSessionOptions = {}): Promise<ChatSession> {
+  const copilot = await copilotClient();
+  const config: SessionConfig = {
+    model,
+    ...(effort && { reasoningEffort: effort }),
+    streaming: true,
+    workingDirectory: emptyWorkingDirectory(),
+    excludedTools: NO_TOOLS,
+    // Nothing is meant to ask, but if something does, the answer is no.
+    onPermissionRequest: () => ({ kind: "reject" as const }),
+    ...(instructions && { systemMessage: { mode: "append" as const, content: instructions } }),
   };
+  if (!key) return wrap(await copilot.createSession(config));
+
+  // The same key always maps to the same Copilot session, so a meeting keeps its conversation.
+  const sessionId = `boardroom-${createHash("sha256").update(key).digest("hex").slice(0, 32)}`;
+  if (await copilot.getSessionMetadata(sessionId)) {
+    return wrap(await copilot.resumeSession(sessionId, config));
+  }
+  return wrap(await copilot.createSession({ ...config, sessionId }));
 }
 
 function wrap(session: CopilotSession): ChatSession {
@@ -119,5 +84,3 @@ function wrap(session: CopilotSession): ChatSession {
     close: () => session.disconnect(),
   };
 }
-
-export { copilotModel, type CopilotModelOptions } from "./model";

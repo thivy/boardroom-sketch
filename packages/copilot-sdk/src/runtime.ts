@@ -1,3 +1,4 @@
+import type { ChatStatus } from "@app/contracts";
 import { CopilotClient } from "@github/copilot-sdk";
 import { mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -16,6 +17,32 @@ export function copilotClient(): Promise<CopilotClient> {
     throw error;
   });
   return client;
+}
+
+/**
+ * Whether Copilot can be used: the runtime runs as the account the machine is already signed in to
+ * (`gh auth login`).
+ */
+export async function getCopilotStatus(): Promise<ChatStatus> {
+  try {
+    const auth = await (await copilotClient()).getAuthStatus();
+    if (auth.isAuthenticated) {
+      return {
+        available: true,
+        account: auth.login,
+        message: auth.statusMessage ?? `Signed in as ${auth.login}`,
+      };
+    }
+    return {
+      available: false,
+      message: "Not signed in to GitHub Copilot. Run `gh auth login` and try again.",
+    };
+  } catch (error) {
+    return {
+      available: false,
+      message: error instanceof Error ? error.message : "Could not start the Copilot runtime.",
+    };
+  }
 }
 
 /** This is a chat or a typed answer, not an agent: no shell, no files, no MCP servers, whatever the user has installed. */

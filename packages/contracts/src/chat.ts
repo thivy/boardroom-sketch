@@ -14,6 +14,13 @@ export type ChatEvent =
 export type ChatSessionOptions = {
   /** What the assistant is told before the first question: its role and any background, such as a transcript. */
   instructions?: string;
+  /** The model id. Omitted, the runtime picks one. */
+  model?: string;
+  /**
+   * How hard the model thinks before answering (`low`, `medium`, `high`...). Applies when the session is
+   * created and again when it is resumed. Omitted, the model's own default applies.
+   */
+  effort?: string;
   /**
    * A stable identity for the conversation, such as a meeting id. Creating a session with a key that was
    * used before resumes that conversation, earlier turns included.
@@ -31,10 +38,10 @@ export interface ChatSession {
 }
 
 /**
- * Where answers come from. The chat feature depends only on this port; an adapter (today
- * `@app/copilot-sdk`) implements it.
+ * Where answers come from: the chat feature depends only on these two ports, which an adapter (today
+ * `@app/copilot-sdk`) provides. This one tells whether the assistant can be used right now, and as whom.
  */
-export interface ChatBackend {
-  status(): Promise<ChatStatus>;
-  createSession(options?: ChatSessionOptions): Promise<ChatSession>;
-}
+export type GetChatStatus = () => Promise<ChatStatus>;
+
+/** Starts a conversation, or resumes the one that `options.key` names. */
+export type CreateChatSession = (options?: ChatSessionOptions) => Promise<ChatSession>;

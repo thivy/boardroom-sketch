@@ -4,23 +4,15 @@
   "description": "Boardroom Sketch app shell",
   "license": "MIT",
   "repository": "github:thivy/boardroom-sketch",
-  "bin": {
-    "boardroom-sketch": "bin/boardroom-sketch.mjs"
-  },
   "workspaces": [
     "apps/*",
     "packages/*"
-  ],
-  "files": [
-    "bin",
-    "apps/web/.output"
   ],
   "type": "module",
   "scripts": {
     "dev": "bun run --cwd apps/web dev",
     "build": "bun run --cwd apps/web build",
     "start": "bun run --cwd apps/web start",
-    "prepack": "bun run build",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",

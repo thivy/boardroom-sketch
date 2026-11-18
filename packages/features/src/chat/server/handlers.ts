@@ -1,4 +1,9 @@
-import type { ChatBackend, ChatSession, TranscriptStore } from "@app/contracts";
+import type {
+  ChatSession,
+  CreateChatSession,
+  GetChatStatus,
+  TranscriptStore,
+} from "@app/contracts";
 import { renderTranscript } from "../../captions/server/export";
 
 const MAX_MESSAGE = 20_000;
@@ -20,8 +25,15 @@ const json = (body: unknown, status = 200) => Response.json(body, { status });
 const isJson = (request: Request) =>
   request.headers.get("content-type")?.includes("application/json") ?? false;
 
-/** The chat endpoints, as plain `(Request) => Response` handlers over a `ChatBackend` and a `TranscriptStore`. */
-export function createChatHandlers(backend: ChatBackend, store: TranscriptStore) {
+/**
+ * The chat endpoints, as plain `(Request) => Response` handlers over a way to read the assistant's
+ * status, a way to start a conversation, and a `TranscriptStore`.
+ */
+export function createChatHandlers(
+  getChatStatus: GetChatStatus,
+  createChatSession: CreateChatSession,
+  store: TranscriptStore,
+) {
   const conversations = new Map<string, Conversation>();
 
   const release = async (id: string) => {
@@ -56,7 +68,7 @@ export function createChatHandlers(backend: ChatBackend, store: TranscriptStore)
   return {
     /** `GET`: whether the assistant can be used, and as whom. */
     async status(): Promise<Response> {
-      return json(await backend.status());
+      return json(await getChatStatus());
     },
 
     /**
@@ -92,8 +104,9 @@ export function createChatHandlers(backend: ChatBackend, store: TranscriptStore)
         if (open?.[1].busy) return json({ error: "Still answering the last message" }, 409);
         if (open) await release(open[0]);
         try {
-          const session = await backend.createSession({
+          const session = await createChatSession({
             instructions: context ? `${INSTRUCTIONS}\n\n${context}` : INSTRUCTIONS,
+            effort: "high",
             key,
           });
           if (conversations.size >= MAX_CONVERSATIONS) {

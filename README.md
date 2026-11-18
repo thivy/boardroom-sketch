@@ -9,11 +9,11 @@ apps/desktop         Tauri shell: a native window on the web app, which runs as 
 packages/components  shadcn components, `cn()` helper and the Tailwind theme (`styles.css`).
 packages/contracts   Types shared by client, server and adapters, including the `CaptionSource` port.
 packages/teams-cdp   Interim `CaptionSource` that reads Teams captions over the Chrome DevTools Protocol.
-packages/copilot-sdk       `ChatBackend` that answers through the GitHub Copilot SDK.
+packages/copilot-sdk       `getCopilotStatus` and `createCopilotSession` (the chat ports) and `copilotModel`, through the GitHub Copilot SDK.
 packages/storage-sqlite     One SQLite file (`node:sqlite`) shared by the app's stores; today it holds the `TranscriptStore`.
 ```
 
-Dependency direction: `web` → `features`, `components`, `teams-cdp`, `storage-sqlite`, `copilot-sdk`; `features` → `components`, `contracts`; the two adapters → `contracts`. The captions and chat features know only the `CaptionSource`, `TranscriptStore` and `ChatBackend` ports; the app wires the adapters in `apps/web/src/caption-handlers.ts` and `chat-handlers.ts` (see [`packages/features/CAPTIONS.md`](packages/features/CAPTIONS.md) and [`packages/teams-cdp`](packages/teams-cdp/README.md)).
+Dependency direction: `web` → `features`, `components`, `teams-cdp`, `storage-sqlite`, `copilot-sdk`; `features` → `components`, `contracts`; the two adapters → `contracts`. The captions and chat features know only the `CaptionSource`, `TranscriptStore` and chat (`GetChatStatus`, `CreateChatSession`) ports; the app wires the adapters in `apps/web/src/caption-handlers.ts` and `chat-handlers.ts` (see [`packages/features/CAPTIONS.md`](packages/features/CAPTIONS.md) and [`packages/teams-cdp`](packages/teams-cdp/README.md)).
 Server state on the client goes through [TanStack Query](https://tanstack.com/query): `apps/web/src/router.tsx` creates a `QueryClient` per request and connects it to the router for server rendering.
 
 Packages ship TypeScript source (`exports` point at `src/`); Vite compiles them as part of the app graph.
@@ -40,7 +40,7 @@ The adapter only talks to DevTools on `127.0.0.1` (port from `TEAMS_CDP_PORT`, d
 
 The **Analysis chat** page is a chat window backed by the [GitHub Copilot SDK](https://www.npmjs.com/package/@github/copilot-sdk). Optionally pick a saved transcript first and the assistant answers from it (summaries, action items, decisions); the choice is fixed for that chat, so use **New chat** to switch.
 
-It uses the account the machine is signed in with: run `gh auth login` (or set `COPILOT_GITHUB_TOKEN`). The page shows the account, or why it cannot be used. Set `COPILOT_MODEL` to pick a model; otherwise the runtime chooses. Requests count against that account's Copilot usage.
+It uses the account the machine is signed in with: run `gh auth login`. The page shows the account, or why it cannot be used. Requests count against that account's Copilot usage.
 
 The assistant is a chat, not an agent: shell, file and MCP tools are switched off and permission requests are refused. A conversation lives on the server (up to 20, closed after 30 idle minutes or with **New chat**), and a transcript longer than 300,000 characters is cut. Answers are shown as plain text.
 
@@ -48,7 +48,7 @@ The SDK is not bundled into the server build: it finds its runtime in a platform
 
 ## Meeting graph (experimental)
 
-A recorded meeting can also be turned into a graph of what was meant: decisions, actions, questions, risks and claims, the links between them and the quotes behind each. It is **off by default** because it asks a model about the meeting as it happens, which counts against the signed-in Copilot account. Switch on **Build graph live** (beside the recording buttons on the **Teams captions** page, or on the **Meeting graph** page) to follow recordings; the choice is kept and applies at once, also to a recording that is running. To build one for a transcript that is already saved, press **Generate graph** on the **Transcripts** page; that needs no setting and only runs when you press it. Set `COPILOT_FAST_MODEL` and `COPILOT_SMART_MODEL` to choose the models (otherwise the first usable of a short preference list is used) and `COPILOT_FAST_EFFORT` / `COPILOT_SMART_EFFORT` for how hard they think (default `none`, which is fastest). Watch it build live on the **Meeting graph** page (`/graph`), or read it at `GET /api/graph?meeting=<id>`. See [docs/graph-model.md](docs/graph-model.md) and [docs/graph-pipeline.md](docs/graph-pipeline.md).
+A recorded meeting can also be turned into a graph of what was meant: decisions, actions, questions, risks and claims, the links between them and the quotes behind each. It is **off by default** because it asks a model about the meeting as it happens, which counts against the signed-in Copilot account. Switch on **Build graph live** (beside the recording buttons on the **Teams captions** page, or on the **Meeting graph** page) to follow recordings; the choice is kept and applies at once, also to a recording that is running. To build one for a transcript that is already saved, press **Generate graph** on the **Transcripts** page; that needs no setting and only runs when you press it. The graph uses the first usable of a short preference list of models (`gpt-5.6-luna`, `mai-code-2-flash`...), set in `packages/copilot-sdk/src/model.ts`. Watch it build live on the **Meeting graph** page (`/graph`), or read it at `GET /api/graph?meeting=<id>`. See [docs/graph-model.md](docs/graph-model.md) and [docs/graph-pipeline.md](docs/graph-pipeline.md).
 
 ## Desktop app (Tauri)
 
@@ -95,25 +95,6 @@ How it fits together:
 Release steps: run the **Desktop app** workflow (Actions → _Desktop app_ → _Run workflow_, on `main`) and choose `patch`, `minor` or `major` as the bump. See [Download a build from GitHub](#download-a-build-from-github) for what it does.
 
 The builds are not code-signed, so Windows SmartScreen and macOS Gatekeeper warn on first run. The installer version comes from `apps/desktop/src-tauri/tauri.conf.json`, not the tag.
-
-## Run without cloning
-
-```bash
-npx boardroom-sketch            # or: bunx boardroom-sketch
-npx boardroom-sketch --port 8080
-```
-
-Needs Node 22.13+. The package ships the prebuilt server, so nothing is installed or built on first run.
-
-## Publishing
-
-```bash
-npm login
-npm version patch      # or minor / major
-npm publish
-```
-
-`prepack` builds the app before the tarball is created; check the contents first with `npm pack --dry-run`.
 
 ## Getting started
 

@@ -128,7 +128,7 @@ export function createGraphPipeline(options: GraphPipelineOptions) {
         const aliases = createAliases();
         const prompt = triagePrompt(entry.turn, before, openThreads(current), aliases);
         const answer = await model.complete(
-          { tier: "fast", instructions: TRIAGE_INSTRUCTIONS, prompt, schema: TRIAGE_SCHEMA },
+          { instructions: TRIAGE_INSTRUCTIONS, prompt, schema: TRIAGE_SCHEMA },
           AbortSignal.any([stop.signal, AbortSignal.timeout(triageTimeoutMs)]),
         );
         const verdict = parseVerdict(answer.value, aliases);
@@ -142,7 +142,6 @@ export function createGraphPipeline(options: GraphPipelineOptions) {
           modelRoute: verdict.route,
           overridden: held.overridden,
           model: answer.model,
-          effort: answer.effort,
           ms: now() - started,
         });
         if (held.verdict.route === "extract_now") schedule(0);

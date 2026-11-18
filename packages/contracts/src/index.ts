@@ -7,7 +7,14 @@ export type {
   StoredSession,
   TranscriptStore,
 } from "./transcripts";
-export type { ChatBackend, ChatEvent, ChatSession, ChatSessionOptions, ChatStatus } from "./chat";
+export type {
+  ChatEvent,
+  ChatSession,
+  ChatSessionOptions,
+  ChatStatus,
+  CreateChatSession,
+  GetChatStatus,
+} from "./chat";
 export {
   EDGE_FAMILIES,
   EDGE_RULES,
@@ -85,6 +92,6 @@ export type {
   UpdateNodeInput,
 } from "./graph";
 export { replayGraph, type ReplayOp } from "./graph-replay";
-export type { ModelTier, StructuredModel, StructuredRequest, StructuredResponse } from "./model";
+export type { StructuredModel, StructuredRequest, StructuredResponse } from "./model";
 export type { PipelineEvent, PipelineEventKind, PipelineLog } from "./pipeline-log";
 export { DEFAULT_SETTINGS, type AppSettings, type SettingsStore } from "./settings";

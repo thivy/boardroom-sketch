@@ -1,8 +1,4 @@
-/** How much thinking a call needs: `fast` where speed and cost matter most, `smart` where quality does. */
-export type ModelTier = "fast" | "smart";
-
 export type StructuredRequest = {
-  tier: ModelTier;
   /** What the model is, and the rules it follows. */
   instructions: string;
   prompt: string;
@@ -16,8 +12,6 @@ export type StructuredResponse = {
   durationMs: number;
   /** The model that answered, when the adapter knows it. */
   model?: string;
-  /** The reasoning effort it was asked for, when one was set. */
-  effort?: string;
 };
 
 /**
