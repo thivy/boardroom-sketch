@@ -17,6 +17,7 @@ import {
   parseAttrs,
   replayGraph,
   roleAllowed,
+  speakerKey,
   type AddEdgeInput,
   type AddEvidenceInput,
   type Change,
@@ -54,7 +55,6 @@ import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { migrate } from "./database";
 import { graphMigration } from "./graph-schema";
-import { speakerKey } from "./transcripts";
 import { transcriptsMigration } from "./transcripts-schema";
 
 type NodeRow = {
@@ -107,7 +107,6 @@ type Justification = {
   rationale: string | null;
 };
 
-/** What one command touched. */
 type Outcome = { nodeId?: string; edgeId?: string };
 
 /** The settings a run of commands shares: who is changing the graph, and the names they gave nodes. */
@@ -165,10 +164,7 @@ const outranked = (source: Origin, target: Origin, what: string) => {
  * transaction and is written to `graph_ops` with enough detail to rebuild the graph from the log
  * alone, and with the transcript quotes that justify it.
  */
-export function graphSqlite(
-  db: DatabaseSync,
-  { now = Date.now }: { now?: () => number } = {},
-): GraphStore {
+export function graphSqlite(db: DatabaseSync): GraphStore {
   // The graph points at meetings, speakers and captions, so their tables come first.
   migrate(db, transcriptsMigration);
   migrate(db, graphMigration);
@@ -957,7 +953,7 @@ export function graphSqlite(
     typeof id === "string" ? resolveId(id, run) : id;
 
   function execute(command: GraphCommand, run: Run): Outcome {
-    stamp = now();
+    stamp = Date.now();
     switch (command.kind) {
       case "create_node": {
         const { input } = command;
@@ -1021,7 +1017,6 @@ export function graphSqlite(
     }
   }
 
-  /** Runs one command in its own transaction and returns the node or edge it touched. */
   function single<T>(command: GraphCommand, pick: (outcome: Outcome) => T): T {
     return transaction(() => pick(execute(command, { source: "stated", refs: new Map() })));
   }

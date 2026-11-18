@@ -7,12 +7,15 @@ import {
 } from "@app/features/graph/server";
 import { graphStore, pipelineLog, settingsStore, transcriptStore } from "./storage";
 
+// Both ask the signed-in Copilot account's model, so they share one and its choice is made once.
+const model = copilotModel();
+
 // "Generate graph" on a saved transcript. It runs only when someone asks for it, whatever the live
 // graph switch says, and counts against the signed-in Copilot account.
 const builder = createGraphBuilder({
   graph: graphStore,
   log: pipelineLog,
-  model: copilotModel(),
+  model,
   transcripts: transcriptStore,
 });
 
@@ -22,12 +25,11 @@ const liveGraph = createLiveGraphSwitch(settingsStore);
 
 export const graphHandlers = createGraphHandlers(graphStore, pipelineLog, builder, liveGraph);
 
-// Swap `copilotModel()` to use another model.
 export const recordingObservers = [
   createGraphPipeline({
     graph: graphStore,
     log: pipelineLog,
-    model: copilotModel(),
+    model,
     enabled: liveGraph.enabled,
   }),
 ];

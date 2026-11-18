@@ -1,4 +1,5 @@
 export type { Caption, CaptionEvent, CaptionSource, CaptionStatus, Meeting } from "./captions";
+export { speakerKey } from "./captions";
 export type {
   ActiveRecording,
   RecordingObserver,

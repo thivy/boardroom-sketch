@@ -99,7 +99,7 @@ signed-in Copilot account like any other call.
 
 Each call is a new session with no tools. The adapter uses one model for every step: the first of a short
 preference list that the account has (`gpt-5.6-luna`, `mai-code-2-flash`...), set in
-`packages/copilot-sdk/src/model.ts` (or passed to `copilotModel({ model })` where it is wired).
+`packages/copilot-sdk/src/model.ts`.
 **Do not rely on the runtime's own choice (`auto`)**: it answered the typed prompts with placeholders. The
 schema is the strict form (every property required, optional ones nullable) because OpenAI-style models
 reject anything looser.

@@ -25,7 +25,7 @@ export function createRecorder(
   observers: RecordingObserver[] = [],
 ) {
   const recordings = new Map<string, Recording>();
-
+  const starts = new Map<string, Promise<ActiveRecording>>();
   const view = ({ meetingId, title, session, captionsVisible }: Recording): ActiveRecording => ({
     meetingId,
     title,
@@ -49,16 +49,19 @@ export function createRecorder(
       for await (const event of events) {
         if (event.type === "status") recording.captionsVisible = event.captionsVisible;
         else
-          recording.saved = recording.saved.then(async () => {
-            await store.saveCaption(recording.session.id, event.caption);
-            tell((observer) => observer.caption(view(recording), event.caption));
-          });
+          // A failed save loses that line only; it must not stop the lines after it from being saved.
+          recording.saved = recording.saved
+            .then(async () => {
+              await store.saveCaption(recording.session.id, event.caption);
+              tell((observer) => observer.caption(view(recording), event.caption));
+            })
+            .catch(() => {});
         for (const listener of recording.listeners) listener(event);
       }
     } catch {
       // The source failed mid-recording; what was saved so far is kept.
     } finally {
-      await recording.saved.catch(() => {});
+      await recording.saved;
       await store.endSession(recording.session.id, Date.now());
       recordings.delete(recording.meetingId);
       tell((observer) => observer.ended(view(recording)));
@@ -66,34 +69,46 @@ export function createRecorder(
     }
   }
 
+  async function open(meetingId: string): Promise<ActiveRecording> {
+    const meeting = (await source.listMeetings()).find((item) => item.id === meetingId);
+    if (!meeting) throw new Error("That meeting is gone. Find meetings again.");
+
+    const stop = new AbortController();
+    const events = await source.watch(meetingId, stop.signal);
+    const session = await store.startSession(meeting, Date.now());
+    const recording: Recording = {
+      meetingId,
+      title: meeting.title,
+      session,
+      captionsVisible: undefined,
+      stop,
+      listeners: new Set(),
+      saved: Promise.resolve(),
+    };
+    recordings.set(meetingId, recording);
+    void run(recording, events);
+    return view(recording);
+  }
+
   return {
     active(): ActiveRecording[] {
       return [...recordings.values()].map(view);
     },
 
-    /** Starts recording a meeting, or returns the recording already running for it. */
+    /**
+     * Starts recording a meeting, or returns the recording already running for it. Calls made while
+     * the recording is still starting share it, so a double click cannot record a meeting twice.
+     */
     async start(meetingId: string): Promise<ActiveRecording> {
       const running = recordings.get(meetingId);
       if (running) return view(running);
 
-      const meeting = (await source.listMeetings()).find((item) => item.id === meetingId);
-      if (!meeting) throw new Error("That meeting is gone. Find meetings again.");
-
-      const stop = new AbortController();
-      const events = await source.watch(meetingId, stop.signal);
-      const session = await store.startSession(meeting, Date.now());
-      const recording: Recording = {
-        meetingId,
-        title: meeting.title,
-        session,
-        captionsVisible: undefined,
-        stop,
-        listeners: new Set(),
-        saved: Promise.resolve(),
-      };
-      recordings.set(meetingId, recording);
-      void run(recording, events);
-      return view(recording);
+      let starting = starts.get(meetingId);
+      if (!starting) {
+        starting = open(meetingId).finally(() => starts.delete(meetingId));
+        starts.set(meetingId, starting);
+      }
+      return starting;
     },
 
     stop(meetingId: string): boolean {
@@ -120,7 +135,7 @@ export function createRecorder(
       const hold: Listener = (event) => (ready ? listener(event) : pending.push(event));
       recording.listeners.add(hold);
 
-      await recording.saved.catch(() => {});
+      await recording.saved;
       const saved = await store.getSession(recording.session.id);
       onSnapshot(saved?.captions ?? [], recording.captionsVisible);
       ready = true;

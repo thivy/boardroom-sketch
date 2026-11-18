@@ -23,7 +23,7 @@ const migration: Migration = {
 };
 
 /** Keeps the graph pipeline's decisions in the shared database, next to the transcripts they are about. */
-export function pipelineLogSqlite(db: DatabaseSync, { now = Date.now } = {}): PipelineLog {
+export function pipelineLogSqlite(db: DatabaseSync): PipelineLog {
   // Events point at meetings, so the transcripts tables come first.
   migrate(db, transcriptsMigration);
   migrate(db, migration);
@@ -38,7 +38,7 @@ export function pipelineLogSqlite(db: DatabaseSync, { now = Date.now } = {}): Pi
 
   return {
     async record(meetingId, kind, detail) {
-      insert.run(meetingId, kind, JSON.stringify(detail), now());
+      insert.run(meetingId, kind, JSON.stringify(detail), Date.now());
     },
 
     async list(meetingId, filter) {

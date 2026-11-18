@@ -9,6 +9,7 @@ import {
 } from "@app/ui/components/combobox";
 import type { ActiveRecording, Caption, Meeting } from "@app/contracts";
 import { AppHeader } from "../../app-header";
+import { jsonRequest, request } from "../../shared/client/api-request";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   CopyIcon,
@@ -29,33 +30,12 @@ const STATE_LABEL: Record<StreamState, string> = {
   error: "Could not connect",
 };
 
-async function fetchMeetings(): Promise<Meeting[]> {
-  const response = await fetch("/api/captions/meetings");
-  const body = await response.json();
-  if (!response.ok) throw new Error((body as { error: string }).error);
-  return body as Meeting[];
-}
+const fetchMeetings = () => request<Meeting[]>("/api/captions/meetings");
+const fetchWindows = () => request<string[]>("/api/captions/windows");
+const fetchRecordings = () => request<ActiveRecording[]>("/api/captions/recordings");
 
-async function fetchWindows(): Promise<string[]> {
-  const response = await fetch("/api/captions/windows");
-  const body = await response.json();
-  if (!response.ok) throw new Error((body as { error: string }).error);
-  return body as string[];
-}
-
-async function fetchRecordings(): Promise<ActiveRecording[]> {
-  const response = await fetch("/api/captions/recordings");
-  return (await response.json()) as ActiveRecording[];
-}
-
-async function startRecording(meetingId: string) {
-  const response = await fetch("/api/captions/recordings", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ meetingId }),
-  });
-  if (!response.ok) throw new Error(((await response.json()) as { error: string }).error);
-}
+const startRecording = (meetingId: string) =>
+  request("/api/captions/recordings", jsonRequest("POST", { meetingId }));
 
 async function stopRecording(meetingId: string) {
   await fetch(`/api/captions/recordings?meeting=${encodeURIComponent(meetingId)}`, {
@@ -63,14 +43,7 @@ async function stopRecording(meetingId: string) {
   });
 }
 
-async function restartTeams() {
-  const response = await fetch("/api/captions/prepare", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: "{}",
-  });
-  if (!response.ok) throw new Error(((await response.json()) as { error: string }).error);
-}
+const restartTeams = () => request("/api/captions/prepare", jsonRequest("POST", {}));
 
 function toTranscript(captions: Caption[]) {
   return captions

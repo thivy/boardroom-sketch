@@ -14,7 +14,9 @@ import { ChevronsUpDownIcon, NetworkIcon, SearchIcon, XIcon } from "lucide-react
 import { useState } from "react";
 import { AppHeader } from "../../app-header";
 import { GraphCanvas } from "./graph-canvas";
-import { ActivityFeed, NodeDetail, Overview } from "./graph-panels";
+import { ActivityFeed } from "./activity-feed";
+import { NodeDetail } from "./node-detail";
+import { Overview } from "./overview";
 import { LiveGraphSwitch } from "./live-graph-switch";
 import { useLiveGraph, useMeetings } from "./use-live-graph";
 import { useNow } from "./use-now";

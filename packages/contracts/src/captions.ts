@@ -21,6 +21,10 @@ export type CaptionStatus = {
   captionsVisible: boolean;
 };
 
+/** Captions without a speaker id are keyed by name, so one person stays one speaker. */
+export const speakerKey = ({ speakerId, speaker }: Pick<Caption, "speakerId" | "speaker">) =>
+  speakerId || `name:${speaker}`;
+
 export type CaptionEvent =
   | ({ type: "status" } & CaptionStatus)
   | { type: "caption"; caption: Caption };

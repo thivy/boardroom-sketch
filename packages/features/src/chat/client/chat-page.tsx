@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { PlusIcon, SendIcon, SquareIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { AppHeader } from "../../app-header";
+import { request } from "../../shared/client/api-request";
 import { useChat } from "./use-chat";
 
 type TranscriptChoice = { id: number; label: string };
@@ -24,13 +25,6 @@ const SUGGESTIONS = [
   "What decisions were made?",
   "What questions were left unanswered?",
 ];
-
-async function getJson<T>(url: string): Promise<T> {
-  const response = await fetch(url);
-  const body = await response.json();
-  if (!response.ok) throw new Error((body as { error: string }).error);
-  return body as T;
-}
 
 function toChoices(meetings: StoredMeeting[]): TranscriptChoice[] {
   return meetings.flatMap((meeting) =>
@@ -49,13 +43,13 @@ export function ChatPage() {
 
   const status = useQuery({
     queryKey: ["chat", "status"],
-    queryFn: () => getJson<ChatStatus>("/api/chat/status"),
+    queryFn: () => request<ChatStatus>("/api/chat/status"),
     staleTime: 60_000,
     retry: false,
   });
   const meetings = useQuery({
     queryKey: ["transcripts", "meetings"],
-    queryFn: () => getJson<StoredMeeting[]>("/api/transcripts"),
+    queryFn: () => request<StoredMeeting[]>("/api/transcripts"),
     refetchOnMount: "always",
   });
   const choices = useMemo(() => toChoices(meetings.data ?? []), [meetings.data]);

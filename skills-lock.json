@@ -1,23 +1,35 @@
 {
-  "version": 1,
+  "version": 2,
   "skills": {
     "shadcn": {
       "source": "shadcn/ui",
       "sourceType": "github",
       "skillPath": "skills/shadcn/SKILL.md",
-      "computedHash": "7859e9a064940a1a0010c992b63e4633c4f5f39ed367a23c16f24029816b1703"
+      "computedHash": ""
     },
     "tanstack-ai": {
       "source": "TanStack/ai",
       "sourceType": "github",
       "skillPath": "skills/tanstack-ai/SKILL.md",
-      "computedHash": "ae5833375e48f07b2a1eeb9b57f6d57a5ec9d1fc8e2d091f7c4808bdbb48301f"
+      "computedHash": "5b4850563e94779f56813a2951fe935d95c902fc40401e534f4e62719fac6424"
     },
     "tanstack-ai-migration": {
       "source": "TanStack/ai",
       "sourceType": "github",
       "skillPath": "skills/tanstack-ai-migration/SKILL.md",
-      "computedHash": "a79d2c5b19208ede359f12a5d3311d7811cdd4afed739e7aa539a2466fe6f774"
+      "computedHash": ""
+    },
+    "vercel-composition-patterns": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/composition-patterns/SKILL.md",
+      "computedHash": "f711ed8b16162eaa712abbcdbbae6c926f86c57e60127735fecc3ad0dd85b3fa"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-best-practices/SKILL.md",
+      "computedHash": "7991ed4fbecdac23f47c1a40c243e00a212a9e7f3604db93959b3ae11dffe299"
     }
   }
 }

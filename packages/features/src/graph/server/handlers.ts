@@ -6,19 +6,9 @@ import {
 } from "@app/contracts";
 import { BuildError, type GraphBuilder } from "./build";
 import type { LiveGraphSwitch } from "./live-graph-switch";
+import { idParam, json, queryParam, readJson, rejectNonJson } from "../../shared/server/http";
 
-const json = (body: unknown, status = 200) => Response.json(body, { status });
-const param = (request: Request, name: string) => new URL(request.url).searchParams.get(name);
 const KINDS: PipelineEventKind[] = ["triage", "extract", "rejection", "error"];
-
-// A JSON body cannot be sent cross-site without a CORS preflight, so other pages cannot start a build.
-const isJson = (request: Request) =>
-  request.headers.get("content-type")?.includes("application/json") ?? false;
-
-const sessionParam = (request: Request) => {
-  const value = Number(param(request, "session"));
-  return Number.isInteger(value) && value > 0 ? value : undefined;
-};
 
 /**
  * The graph endpoints, as plain `(Request) => Response` handlers over a `GraphStore`, a `PipelineLog`,
@@ -38,16 +28,17 @@ export function createGraphHandlers(
 
     /** `PUT { enabled }`: turns building the graph during a recording on or off. */
     async liveUpdate(request: Request): Promise<Response> {
-      if (!isJson(request)) return json({ error: "Expected application/json" }, 415);
-      const body = (await request.json().catch(() => ({}))) as { enabled?: unknown };
+      const rejected = rejectNonJson(request);
+      if (rejected) return rejected;
+      const body = await readJson<{ enabled: unknown }>(request);
       if (typeof body.enabled !== "boolean") return json({ error: "Missing enabled" }, 400);
       return json({ enabled: await liveGraph.set(body.enabled) });
     },
 
     /** `GET ?session=<id>&meeting=<id>`: where building the graph from that transcript is. */
     async buildStatus(request: Request): Promise<Response> {
-      const session = sessionParam(request);
-      const meeting = param(request, "meeting");
+      const session = idParam(request, "session");
+      const meeting = queryParam(request, "meeting");
       if (session === undefined || !meeting)
         return json({ error: "Missing session or meeting" }, 400);
       return json(await builder.status(session, meeting));
@@ -58,11 +49,9 @@ export function createGraphHandlers(
      * code `graph_exists` when the meeting already has a graph and `replace` was not set.
      */
     async buildStart(request: Request): Promise<Response> {
-      if (!isJson(request)) return json({ error: "Expected application/json" }, 415);
-      const body = (await request.json().catch(() => ({}))) as {
-        sessionId?: unknown;
-        replace?: unknown;
-      };
+      const rejected = rejectNonJson(request);
+      if (rejected) return rejected;
+      const body = await readJson<{ sessionId: unknown; replace: unknown }>(request);
       if (!Number.isInteger(body.sessionId) || (body.sessionId as number) <= 0) {
         return json({ error: "Missing sessionId" }, 400);
       }
@@ -81,7 +70,7 @@ export function createGraphHandlers(
 
     /** `DELETE ?session=<id>`: stops a running build; what was built so far is kept. */
     buildCancel(request: Request): Response {
-      const session = sessionParam(request);
+      const session = idParam(request, "session");
       if (session === undefined) return json({ error: "Missing session" }, 400);
       return builder.cancel(session) ? json({}) : json({ error: "No build is running" }, 404);
     },
@@ -91,10 +80,10 @@ export function createGraphHandlers(
      * it stood then.
      */
     async graph(request: Request): Promise<Response> {
-      const meeting = param(request, "meeting");
+      const meeting = queryParam(request, "meeting");
       if (!meeting) return json({ error: "Missing meeting" }, 400);
-      const op = param(request, "asOfOp");
-      const time = param(request, "asOfTime");
+      const op = queryParam(request, "asOfOp");
+      const time = queryParam(request, "asOfTime");
       if (op !== null && !Number.isInteger(Number(op))) return json({ error: "Bad asOfOp" }, 400);
       if (time !== null && !Number.isFinite(Number(time)))
         return json({ error: "Bad asOfTime" }, 400);
@@ -105,8 +94,8 @@ export function createGraphHandlers(
 
     /** `GET ?node=<id>` or `?edge=<id>`: what happened to a node or an edge, with the quotes behind it. */
     async history(request: Request): Promise<Response> {
-      const nodeId = param(request, "node");
-      const edgeId = param(request, "edge");
+      const nodeId = queryParam(request, "node");
+      const edgeId = queryParam(request, "edge");
       if (!nodeId && !edgeId) return json({ error: "Give node or edge" }, 400);
       try {
         return json(await graph.history(nodeId ? { nodeId } : { edgeId: edgeId! }));
@@ -120,12 +109,12 @@ export function createGraphHandlers(
 
     /** `GET ?meeting=<id>[&kind=triage|extract|rejection|error][&limit=<n>]`: what the pipeline did and decided. */
     async events(request: Request): Promise<Response> {
-      const meeting = param(request, "meeting");
+      const meeting = queryParam(request, "meeting");
       if (!meeting) return json({ error: "Missing meeting" }, 400);
-      const kind = param(request, "kind");
+      const kind = queryParam(request, "kind");
       if (kind !== null && !(KINDS as string[]).includes(kind))
         return json({ error: "Bad kind" }, 400);
-      const limit = Number(param(request, "limit") ?? 500);
+      const limit = Number(queryParam(request, "limit") ?? 500);
       return json(
         await log.list(meeting, {
           kind: (kind as PipelineEventKind | null) ?? undefined,

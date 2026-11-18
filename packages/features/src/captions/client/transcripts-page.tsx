@@ -15,19 +15,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DownloadIcon, LoaderCircleIcon, Trash2Icon } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { AppHeader } from "../../app-header";
+import { request } from "../../shared/client/api-request";
 
 /** What the page offers on a session besides export and delete; the app decides what goes here. */
 export type SessionActions = (context: { session: StoredSession; meeting: Meeting }) => ReactNode;
 
 const stamp = (at: number) => new Date(at).toLocaleString();
 const time = (at: number) => new Date(at).toLocaleTimeString();
-
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
-  const body = await response.json();
-  if (!response.ok) throw new Error((body as { error: string }).error);
-  return body as T;
-}
 
 function sessionLabel({ startedAt, endedAt, captionCount }: StoredSession) {
   const range = endedAt

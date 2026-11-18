@@ -5,7 +5,7 @@ import type {
   StructuredModel,
   TranscriptStore,
 } from "@app/contracts";
-import { extractTurns } from "./extraction";
+import { EXTRACT_MAX_TURNS, EXTRACT_TIMEOUT_MS, extractTurns } from "./extraction";
 import { turnsFromCaptions, type Turn } from "./turns";
 
 /** A request the builder will not carry out, with the HTTP status that suits it. */
@@ -21,18 +21,16 @@ export class BuildError extends Error {
   }
 }
 
+/** About this much text at most per extraction call. */
+const MAX_BATCH_CHARS = 6_000;
+/** A transcript needing more calls than this is refused. */
+const MAX_BATCHES = 300;
+
 export type GraphBuilderOptions = {
   graph: GraphStore;
   log: PipelineLog;
   model: StructuredModel;
   transcripts: TranscriptStore;
-  /** The most turns read in one extraction call. Default 8. */
-  maxBatch?: number;
-  /** About this much text at most per call. Default 6,000 characters. */
-  maxBatchChars?: number;
-  /** A transcript needing more calls than this is refused. Default 300. */
-  maxBatches?: number;
-  extractTimeoutMs?: number;
 };
 
 type Job = { status: Omit<GraphBuildStatus, "nodes">; stop: AbortController };
@@ -62,16 +60,7 @@ function batchesOf(turns: Turn[], maxTurns: number, maxChars: number): Turn[][] 
  * nobody waiting it would cost one call per turn to save a fraction of the extraction calls. One build
  * runs per meeting, and the graph fills in as it goes, so the graph page can show it happening.
  */
-export function createGraphBuilder({
-  graph,
-  log,
-  model,
-  transcripts,
-  maxBatch = 8,
-  maxBatchChars = 6_000,
-  maxBatches = 300,
-  extractTimeoutMs = 120_000,
-}: GraphBuilderOptions) {
+export function createGraphBuilder({ graph, log, model, transcripts }: GraphBuilderOptions) {
   const jobs = new Map<number, Job>();
 
   const nodesOf = async (meetingId: string) => (await graph.getGraph(meetingId)).nodes.length;
@@ -93,7 +82,7 @@ export function createGraphBuilder({
               deps,
               batch,
               [],
-              AbortSignal.any([job.stop.signal, AbortSignal.timeout(extractTimeoutMs)]),
+              AbortSignal.any([job.stop.signal, AbortSignal.timeout(EXTRACT_TIMEOUT_MS)]),
             );
             status.accepted += result.accepted;
             status.rejected += result.rejected;
@@ -164,11 +153,11 @@ export function createGraphBuilder({
 
       const turns = turnsFromCaptions(session.id, captions);
       if (turns.length === 0) throw new BuildError(422, "This transcript has no captions.");
-      const batches = batchesOf(turns, maxBatch, maxBatchChars);
-      if (batches.length > maxBatches) {
+      const batches = batchesOf(turns, EXTRACT_MAX_TURNS, MAX_BATCH_CHARS);
+      if (batches.length > MAX_BATCHES) {
         throw new BuildError(
           413,
-          `This transcript needs ${batches.length} model calls, more than the limit of ${maxBatches}.`,
+          `This transcript needs ${batches.length} model calls, more than the limit of ${MAX_BATCHES}.`,
         );
       }
 

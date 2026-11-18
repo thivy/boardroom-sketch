@@ -1,6 +1,11 @@
 import type { TranscriptStore } from "@app/contracts";
-import { EXPORT_TYPES, exportFileName, isExportFormat, renderTranscript } from "./export";
-import { json, parseSessionId } from "./http";
+import { idParam, json, queryParam } from "../../shared/server/http";
+import {
+  EXPORT_TYPES,
+  exportFileName,
+  isExportFormat,
+  renderTranscript,
+} from "../../shared/server/transcript-export";
 import type { Recorder } from "./recorder";
 
 /** `GET`: every meeting with saved sessions, and its sessions. */
@@ -10,7 +15,7 @@ export async function listTranscripts(store: TranscriptStore): Promise<Response>
 
 /** `GET ?session=<id>`: one session with its captions. */
 export async function getTranscript(request: Request, store: TranscriptStore): Promise<Response> {
-  const id = parseSessionId(request);
+  const id = idParam(request, "session");
   if (id === undefined) return json({ error: "Missing or invalid session" }, 400);
   const transcript = await store.getSession(id);
   return transcript ? json(transcript) : json({ error: "No such session" }, 404);
@@ -21,8 +26,8 @@ export async function exportTranscript(
   request: Request,
   store: TranscriptStore,
 ): Promise<Response> {
-  const id = parseSessionId(request);
-  const format = new URL(request.url).searchParams.get("format") ?? "txt";
+  const id = idParam(request, "session");
+  const format = queryParam(request, "format") ?? "txt";
   if (id === undefined || !isExportFormat(format)) {
     return json({ error: "Missing or invalid session or format" }, 400);
   }
@@ -42,7 +47,7 @@ export async function deleteTranscript(
   store: TranscriptStore,
   recorder: Recorder,
 ): Promise<Response> {
-  const id = parseSessionId(request);
+  const id = idParam(request, "session");
   if (id === undefined) return json({ error: "Missing or invalid session" }, 400);
   if (recorder.active().some((recording) => recording.session.id === id)) {
     return json({ error: "Stop the recording before deleting it" }, 409);

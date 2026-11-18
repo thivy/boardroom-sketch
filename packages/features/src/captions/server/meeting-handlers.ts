@@ -1,5 +1,5 @@
 import type { CaptionSource } from "@app/contracts";
-import { errorMessage, isJsonRequest, json } from "./http";
+import { errorMessage, json, rejectNonJson } from "../../shared/server/http";
 
 /** `GET`: the meetings that can be read right now. */
 export async function listMeetings(source: CaptionSource): Promise<Response> {
@@ -21,7 +21,8 @@ export async function listWindows(source: CaptionSource): Promise<Response> {
 
 /** `POST`: lets the source get Teams ready to be read, if it has a way to. */
 export async function prepareSource(request: Request, source: CaptionSource): Promise<Response> {
-  if (!isJsonRequest(request)) return json({ error: "Expected application/json" }, 415);
+  const rejected = rejectNonJson(request);
+  if (rejected) return rejected;
   if (!source.prepare) return json({ error: "This source cannot restart Teams" }, 501);
   try {
     await source.prepare();

@@ -1,18 +1,12 @@
 import { Switch } from "@app/ui/components/switch";
 import { cn } from "@app/ui/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { request, jsonRequest } from "../../shared/client/api-request";
 
 type LiveGraph = { enabled: boolean };
 
 const KEY = ["graph", "live"];
 const ENDPOINT = "/api/graph/live";
-
-async function request(init?: RequestInit): Promise<LiveGraph> {
-  const response = await fetch(ENDPOINT, init);
-  const body = await response.json();
-  if (!response.ok) throw new Error((body as { error: string }).error);
-  return body as LiveGraph;
-}
 
 /**
  * Whether the graph is built while a meeting is recorded. It is off until switched on, because it asks
@@ -21,14 +15,9 @@ async function request(init?: RequestInit): Promise<LiveGraph> {
  */
 export function LiveGraphSwitch({ className }: { className?: string }) {
   const queryClient = useQueryClient();
-  const setting = useQuery({ queryKey: KEY, queryFn: () => request() });
+  const setting = useQuery({ queryKey: KEY, queryFn: () => request<LiveGraph>(ENDPOINT) });
   const update = useMutation({
-    mutationFn: (enabled: boolean) =>
-      request({
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ enabled }),
-      }),
+    mutationFn: (enabled: boolean) => request<LiveGraph>(ENDPOINT, jsonRequest("PUT", { enabled })),
     onSuccess: (data) => queryClient.setQueryData(KEY, data),
   });
 

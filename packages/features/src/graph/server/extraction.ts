@@ -3,6 +3,11 @@ import { EXTRACT_INSTRUCTIONS, EXTRACT_SCHEMA, extractContext, planChanges } fro
 import type { Rejection } from "./extract";
 import type { Turn } from "./turns";
 
+/** The most turns read in one extraction call. */
+export const EXTRACT_MAX_TURNS = 8;
+/** How long one extraction call may take. */
+export const EXTRACT_TIMEOUT_MS = 120_000;
+
 export type ExtractionDeps = {
   graph: GraphStore;
   log: PipelineLog;

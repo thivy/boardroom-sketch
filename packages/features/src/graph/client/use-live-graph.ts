@@ -2,17 +2,11 @@ import type { ActiveRecording, GraphOp, MeetingGraph, StoredMeeting } from "@app
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { type Activity, diffGraphs } from "./activity";
+import { request } from "../../shared/client/api-request";
 
 const POLL_MS = 1500;
 const FRESH_MS = 6000;
 const MAX_ACTIVITY = 60;
-
-async function request<T>(url: string): Promise<T> {
-  const response = await fetch(url);
-  const body = await response.json();
-  if (!response.ok) throw new Error((body as { error: string }).error);
-  return body as T;
-}
 
 type Tracker = {
   meetingId: string | undefined;

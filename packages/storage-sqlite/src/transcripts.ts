@@ -1,10 +1,11 @@
-import type {
-  Caption,
-  Meeting,
-  SessionTranscript,
-  StoredMeeting,
-  StoredSession,
-  TranscriptStore,
+import {
+  speakerKey,
+  type Caption,
+  type Meeting,
+  type SessionTranscript,
+  type StoredMeeting,
+  type StoredSession,
+  type TranscriptStore,
 } from "@app/contracts";
 import type { DatabaseSync } from "node:sqlite";
 import { migrate } from "./database";
@@ -29,10 +30,6 @@ const toSession = (row: SessionRow): StoredSession => ({
   endedAt: row.ended_at,
   captionCount: row.caption_count,
 });
-
-/** Captions without a speaker id are keyed by name, so one person stays one speaker. */
-export const speakerKey = ({ speakerId, speaker }: Pick<Caption, "speakerId" | "speaker">) =>
-  speakerId || `name:${speaker}`;
 
 /** Keeps transcripts in the shared database (see `openDatabase`). */
 export function transcriptsSqlite(db: DatabaseSync): TranscriptStore {

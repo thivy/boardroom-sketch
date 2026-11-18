@@ -155,9 +155,13 @@
                   "@app/copilot-sdk/**",
                   "@github/copilot-sdk",
                   "../client",
-                  "../client/**"
+                  "../client/**",
+                  "../../captions/**",
+                  "../../chat/**",
+                  "../../graph/**",
+                  "../../updates/**"
                 ],
-                "message": "Feature servers run without a UI and know only the ports in @app/contracts; the app wires adapters in (apps/web/src/*-handlers.ts)."
+                "message": "Feature servers run without a UI and know only the ports in @app/contracts and what is in features/src/shared; the app wires adapters in (apps/web/src/*-handlers.ts). Features do not import each other."
               }
             ]
           }
@@ -188,8 +192,16 @@
           {
             "patterns": [
               {
-                "group": ["../server", "../server/**", "@github/copilot-sdk"],
-                "message": "Feature clients must not import server code; share types through @app/contracts."
+                "group": [
+                  "../server",
+                  "../server/**",
+                  "@github/copilot-sdk",
+                  "../../captions/**",
+                  "../../chat/**",
+                  "../../graph/**",
+                  "../../updates/**"
+                ],
+                "message": "Feature clients must not import server code, or another feature; share types through @app/contracts and code through features/src/shared."
               }
             ]
           }

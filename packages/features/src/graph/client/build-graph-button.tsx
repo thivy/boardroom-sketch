@@ -12,15 +12,7 @@ import type { GraphBuildStatus, StoredSession } from "@app/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LoaderCircleIcon, NetworkIcon, SquareIcon } from "lucide-react";
 import { useState } from "react";
-
-const JSON_HEADERS = { "content-type": "application/json" };
-
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
-  const body = await response.json();
-  if (!response.ok) throw new Error((body as { error: string }).error);
-  return body as T;
-}
+import { request, jsonRequest } from "../../shared/client/api-request";
 
 /**
  * Builds the meeting's graph from one saved transcript: the model reads the transcript in order, a few
@@ -49,11 +41,10 @@ export function BuildGraphButton({
 
   const start = useMutation({
     mutationFn: (replace: boolean) =>
-      request<GraphBuildStatus>("/api/graph/build", {
-        method: "POST",
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ sessionId: session.id, replace }),
-      }),
+      request<GraphBuildStatus>(
+        "/api/graph/build",
+        jsonRequest("POST", { sessionId: session.id, replace }),
+      ),
     onSuccess: (data) => {
       setConfirming(false);
       queryClient.setQueryData(key, data);

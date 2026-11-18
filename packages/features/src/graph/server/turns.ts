@@ -1,4 +1,4 @@
-import type { Caption } from "@app/contracts";
+import { speakerKey, type Caption } from "@app/contracts";
 
 /** One person speaking, from their first caption line to the last, ended by another speaker or by silence. */
 export type Turn = {
@@ -12,14 +12,12 @@ export type Turn = {
   endedAt: number;
 };
 
-export type TurnBuilderOptions = {
-  /** Silence after which a turn is over when nobody else has spoken. Default 4 seconds. */
-  idleMs?: number;
-  /** A long monologue is cut into turns of about this length at a line break. Default 45 seconds. */
-  maxMs?: number;
-  onTurn: (turn: Turn) => void;
-  now?: () => number;
-};
+/** Silence after which a turn is over when nobody else has spoken. */
+const IDLE_MS = 4_000;
+/** A long monologue is cut into turns of about this length at a line break. */
+const MAX_TURN_MS = 45_000;
+/** A saved transcript is cut into turns of about this much text, so a monologue is not one huge turn. */
+const MAX_TURN_CHARS = 1_200;
 
 type Open = {
   speakerKey: string;
@@ -29,19 +27,12 @@ type Open = {
   startedAt: number;
 };
 
-const speakerKey = ({ speakerId, speaker }: Pick<Caption, "speakerId" | "speaker">) =>
-  speakerId || `name:${speaker}`;
-
 /**
  * The turns of a transcript that is already complete: runs of lines by one speaker, cut where another
- * speaker starts, or after about `maxChars` of text so that a monologue does not become one huge turn.
- * (Nothing is live here, so there is no silence to wait for.)
+ * speaker starts, or after about `MAX_TURN_CHARS` of text. (Nothing is live here, so there is no
+ * silence to wait for.)
  */
-export function turnsFromCaptions(
-  sessionId: number,
-  captions: readonly Caption[],
-  { maxChars = 1_200 }: { maxChars?: number } = {},
-): Turn[] {
+export function turnsFromCaptions(sessionId: number, captions: readonly Caption[]): Turn[] {
   const turns: Turn[] = [];
   let open: Turn | undefined;
   let who = "";
@@ -50,7 +41,7 @@ export function turnsFromCaptions(
     const text = caption.text.trim();
     if (!text) continue;
     const key = speakerKey(caption);
-    if (!open || key !== who || chars + text.length > maxChars) {
+    if (!open || key !== who || chars + text.length > MAX_TURN_CHARS) {
       open = {
         id: `${sessionId}:${caption.id}`,
         sessionId,
@@ -76,8 +67,7 @@ export function turnsFromCaptions(
  * no sign that a person has finished, so a turn ends when someone else starts or after a pause. Only
  * finished turns go on to the pipeline, and a line already handed on is never handed on again.
  */
-export function createTurnBuilder(sessionId: number, options: TurnBuilderOptions) {
-  const { idleMs = 4_000, maxMs = 45_000, onTurn, now = Date.now } = options;
+export function createTurnBuilder(sessionId: number, onTurn: (turn: Turn) => void) {
   let open: Open | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const handedOn = new Set<string>();
@@ -97,7 +87,7 @@ export function createTurnBuilder(sessionId: number, options: TurnBuilderOptions
       speaker: finished.speaker,
       lines,
       startedAt: finished.startedAt,
-      endedAt: now(),
+      endedAt: Date.now(),
     });
   }
 
@@ -106,18 +96,19 @@ export function createTurnBuilder(sessionId: number, options: TurnBuilderOptions
     add(caption: Caption) {
       if (handedOn.has(caption.id) || !caption.text.trim()) return;
       const key = speakerKey(caption);
-      const tooLong = open && now() - open.startedAt > maxMs && !open.lines.has(caption.id);
+      const tooLong =
+        open && Date.now() - open.startedAt > MAX_TURN_MS && !open.lines.has(caption.id);
       if (open && (open.speakerKey !== key || tooLong)) close();
       open ??= {
         speakerKey: key,
         speakerId: caption.speakerId,
         speaker: caption.speaker,
         lines: new Map(),
-        startedAt: now(),
+        startedAt: Date.now(),
       };
       open.lines.set(caption.id, caption.text);
       clearTimeout(timer);
-      timer = setTimeout(close, idleMs);
+      timer = setTimeout(close, IDLE_MS);
       timer.unref?.();
     },
 

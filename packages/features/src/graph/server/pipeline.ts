@@ -8,7 +8,7 @@ import type {
   StructuredModel,
 } from "@app/contracts";
 import { createAliases, openThreads } from "./context";
-import { extractTurns } from "./extraction";
+import { EXTRACT_MAX_TURNS, EXTRACT_TIMEOUT_MS, extractTurns } from "./extraction";
 import {
   TRIAGE_INSTRUCTIONS,
   TRIAGE_SCHEMA,
@@ -23,65 +23,39 @@ export type GraphPipelineOptions = {
   graph: GraphStore;
   log: PipelineLog;
   model: StructuredModel;
-  /** How long turns wait for company before being extracted. Default 20 seconds. */
-  flushMs?: number;
-  /** The most turns extracted in one call. Default 8. */
-  maxBatch?: number;
-  /** Triage calls in flight at once. Default 2. */
-  triageConcurrency?: number;
-  /** Turns waiting for Triage beyond this go on without a verdict. Default 6. */
-  triageBacklog?: number;
-  triageTimeoutMs?: number;
-  extractTimeoutMs?: number;
-  /** A ceiling on model calls per recording, so a long meeting cannot run up usage unnoticed. Default 400. */
-  maxModelCalls?: number;
-  /** Passed to the turn builder. */
-  idleMs?: number;
   /**
    * Asked on every caption. While it is false nothing new is followed, and a recording that was being
-   * followed is finished off. Default: always on.
+   * followed is finished off.
    */
-  enabled?: () => boolean;
-  now?: () => number;
+  enabled: () => boolean;
 };
 
 type Entry = { turn: Turn; queuedAt: number; verdict?: Verdict; attempts: number };
 
 const MAX_ATTEMPTS = 2;
+/** How long turns wait for company before being extracted. */
+const FLUSH_MS = 20_000;
+/** Triage calls in flight at once. */
+const TRIAGE_CONCURRENCY = 2;
+/** Turns waiting for Triage beyond this go on without a verdict. */
+const TRIAGE_BACKLOG = 6;
+const TRIAGE_TIMEOUT_MS = 30_000;
+/** A ceiling on model calls per recording, so a long meeting cannot run up usage unnoticed. */
+const MAX_MODEL_CALLS = 400;
 
 /**
  * Builds a meeting's graph while it is recorded. Finished turns go to Triage, which runs beside
  * everything else and only advises, and in batches to Extract, which proposes changes that plain
  * code checks and saves. One recording has one writer, so changes land in order.
  */
-export function createGraphPipeline(options: GraphPipelineOptions) {
-  const {
-    graph,
-    log,
-    model,
-    flushMs = 20_000,
-    maxBatch = 8,
-    triageConcurrency = 2,
-    triageBacklog = 6,
-    triageTimeoutMs = 30_000,
-    extractTimeoutMs = 120_000,
-    maxModelCalls = 400,
-    idleMs,
-    enabled = () => true,
-    now = Date.now,
-  } = options;
-
+export function createGraphPipeline({ graph, log, model, enabled }: GraphPipelineOptions) {
   const runs = new Map<number, ReturnType<typeof createRun>>();
-  /** Recordings that are no longer followed but still have turns to extract. */
-  const finishing = new Set<Promise<void>>();
 
   function finish(sessionId: number) {
     const run = runs.get(sessionId);
     if (!run) return;
     runs.delete(sessionId);
-    const done = run.end();
-    finishing.add(done);
-    void done.finally(() => finishing.delete(done));
+    void run.end();
   }
 
   function createRun(recording: ActiveRecording) {
@@ -104,7 +78,7 @@ export function createGraphPipeline(options: GraphPipelineOptions) {
 
     /** Counts a model call against the ceiling; false once it is spent. */
     function spend(step: string): boolean {
-      if (calls < maxModelCalls) {
+      if (calls < MAX_MODEL_CALLS) {
         calls++;
         return true;
       }
@@ -112,7 +86,7 @@ export function createGraphPipeline(options: GraphPipelineOptions) {
         overBudget = true;
         void emit("error", {
           step,
-          message: `Reached the limit of ${maxModelCalls} model calls for this recording`,
+          message: `Reached the limit of ${MAX_MODEL_CALLS} model calls for this recording`,
         });
       }
       return false;
@@ -122,14 +96,14 @@ export function createGraphPipeline(options: GraphPipelineOptions) {
 
     async function triage(entry: Entry, before: Turn[]) {
       if (!spend("triage")) return;
-      const started = now();
+      const started = Date.now();
       try {
         const current = await graph.getGraph(meetingId);
         const aliases = createAliases();
         const prompt = triagePrompt(entry.turn, before, openThreads(current), aliases);
         const answer = await model.complete(
           { instructions: TRIAGE_INSTRUCTIONS, prompt, schema: TRIAGE_SCHEMA },
-          AbortSignal.any([stop.signal, AbortSignal.timeout(triageTimeoutMs)]),
+          AbortSignal.any([stop.signal, AbortSignal.timeout(TRIAGE_TIMEOUT_MS)]),
         );
         const verdict = parseVerdict(answer.value, aliases);
         if (!verdict) throw new Error("The verdict was not one of the allowed shapes");
@@ -142,7 +116,7 @@ export function createGraphPipeline(options: GraphPipelineOptions) {
           modelRoute: verdict.route,
           overridden: held.overridden,
           model: answer.model,
-          ms: now() - started,
+          ms: Date.now() - started,
         });
         if (held.verdict.route === "extract_now") schedule(0);
       } catch (error) {
@@ -156,7 +130,7 @@ export function createGraphPipeline(options: GraphPipelineOptions) {
     }
 
     function pumpTriage() {
-      while (triageActive < triageConcurrency && triageQueue.length > 0) {
+      while (triageActive < TRIAGE_CONCURRENCY && triageQueue.length > 0) {
         const next = triageQueue.shift()!;
         triageActive++;
         void triage(next.entry, next.before).finally(() => {
@@ -169,7 +143,7 @@ export function createGraphPipeline(options: GraphPipelineOptions) {
     // ---- Extract: one batch at a time ----
 
     function schedule(ms: number) {
-      const due = now() + ms;
+      const due = Date.now() + ms;
       if (timer && due >= timerDue) return;
       clearTimeout(timer);
       timerDue = due;
@@ -185,7 +159,7 @@ export function createGraphPipeline(options: GraphPipelineOptions) {
       if (pending.length === 0) return Promise.resolve();
 
       const oldest = Math.min(...pending.map((entry) => entry.queuedAt));
-      const wait = flushMs - (now() - oldest);
+      const wait = FLUSH_MS - (Date.now() - oldest);
       const urgent = pending.some((entry) => entry.verdict?.route === "extract_now");
       if (!force && !ended && !urgent && wait > 0) {
         schedule(wait);
@@ -203,7 +177,7 @@ export function createGraphPipeline(options: GraphPipelineOptions) {
       for (let i = pending.length - 1; i >= 0; i--) {
         if (pending[i].verdict?.route === "skip") pending.splice(i, 1);
       }
-      const batch = pending.slice(0, maxBatch);
+      const batch = pending.slice(0, EXTRACT_MAX_TURNS);
       if (batch.length === 0) return;
       if (!spend("extract")) {
         pending.length = 0;
@@ -215,7 +189,7 @@ export function createGraphPipeline(options: GraphPipelineOptions) {
           { graph, log, model, meetingId },
           batch.map((entry) => entry.turn),
           [...new Set(batch.flatMap((entry) => entry.verdict?.touches ?? []))],
-          AbortSignal.any([stop.signal, AbortSignal.timeout(extractTimeoutMs)]),
+          AbortSignal.any([stop.signal, AbortSignal.timeout(EXTRACT_TIMEOUT_MS)]),
         );
         pending.splice(0, batch.length);
       } catch (error) {
@@ -234,27 +208,23 @@ export function createGraphPipeline(options: GraphPipelineOptions) {
 
     // ---- Turns ----
 
-    const builder = createTurnBuilder(recording.session.id, {
-      idleMs,
-      now,
-      onTurn(turn) {
-        const entry: Entry = { turn, queuedAt: now(), attempts: 0 };
-        const before = recent.slice(-2);
-        recent.push(turn);
-        if (recent.length > 6) recent.shift();
-        pending.push(entry);
-        triageQueue.push({ entry, before });
-        while (triageQueue.length > triageBacklog) {
-          const dropped = triageQueue.shift()!;
-          void emit("error", {
-            step: "triage",
-            turnId: dropped.entry.turn.id,
-            message: "Skipped: Triage was behind",
-          });
-        }
-        pumpTriage();
-        schedule(flushMs);
-      },
+    const builder = createTurnBuilder(recording.session.id, (turn) => {
+      const entry: Entry = { turn, queuedAt: Date.now(), attempts: 0 };
+      const before = recent.slice(-2);
+      recent.push(turn);
+      if (recent.length > 6) recent.shift();
+      pending.push(entry);
+      triageQueue.push({ entry, before });
+      while (triageQueue.length > TRIAGE_BACKLOG) {
+        const dropped = triageQueue.shift()!;
+        void emit("error", {
+          step: "triage",
+          turnId: dropped.entry.turn.id,
+          message: "Skipped: Triage was behind",
+        });
+      }
+      pumpTriage();
+      schedule(FLUSH_MS);
     });
 
     return {
@@ -297,10 +267,5 @@ export function createGraphPipeline(options: GraphPipelineOptions) {
     },
   };
 
-  return Object.assign(observer, {
-    /** Resolves when every recording that is no longer followed has been fully extracted. */
-    async idle() {
-      await Promise.all([...finishing]);
-    },
-  });
+  return observer;
 }
