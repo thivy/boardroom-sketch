@@ -1,8 +1,9 @@
 // Prepares what the Tauri bundle ships:
-//  - a Node binary as the sidecar (named with the Rust target triple, as Tauri requires);
+//  - a Bun binary as the sidecar (named with the Rust target triple, as Tauri requires);
 //  - the built web server as a resource, with the packages the build leaves external installed
 //    next to it (the Copilot SDK finds its runtime in a platform package at run time).
-import { execFileSync, execSync } from "node:child_process";
+// Run it with Bun: the sidecar is a copy of the Bun that runs this script.
+import { execFileSync } from "node:child_process";
 import {
   copyFileSync,
   cpSync,
@@ -32,10 +33,14 @@ try {
 }
 if (!triple) throw new Error("Could not read the Rust target triple from rustc -vV");
 
+if (!process.versions.bun) {
+  throw new Error("Run this with Bun: the sidecar is a copy of the Bun that runs it.");
+}
+
 const exe = process.platform === "win32" ? ".exe" : "";
 const binaries = join(root, "src-tauri", "binaries");
 mkdirSync(binaries, { recursive: true });
-copyFileSync(process.execPath, join(binaries, `node-${triple}${exe}`));
+copyFileSync(process.execPath, join(binaries, `bun-${triple}${exe}`));
 
 const server = join(root, "src-tauri", "server");
 rmSync(server, { recursive: true, force: true });
@@ -47,9 +52,9 @@ writeFileSync(
   join(server, "package.json"),
   JSON.stringify({ private: true, dependencies: rootPackage.dependencies }, null, 2),
 );
-execSync("npm install --omit=dev --no-audit --no-fund --no-package-lock", {
+execFileSync(process.execPath, ["install", "--production", "--no-save"], {
   cwd: server,
   stdio: "inherit",
 });
 
-console.log(`Sidecar node-${triple}${exe} and server resources ready.`);
+console.log(`Sidecar bun-${triple}${exe} and server resources ready.`);

@@ -7,7 +7,13 @@
   "env": {
     "builtin": true
   },
-  "ignorePatterns": ["**/.output/**", "**/dist/**", "**/build/**", "**/routeTree.gen.ts", ".agents/**"],
+  "ignorePatterns": [
+    "**/.output/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/routeTree.gen.ts",
+    ".agents/**"
+  ],
   "rules": {
     "no-array-constructor": "error",
     "no-unused-expressions": "warn",

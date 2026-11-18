@@ -11,7 +11,7 @@ use tauri_plugin_shell::ShellExt;
 
 const START_TIMEOUT: Duration = Duration::from_secs(90);
 
-/// The Node process that serves the app; stopped when the app exits.
+/// The Bun process that serves the app; stopped when the app exits.
 struct Server(Mutex<Option<CommandChild>>);
 
 fn free_port() -> u16 {
@@ -39,7 +39,7 @@ fn server_entry(app: &tauri::AppHandle) -> PathBuf {
     plain_path(path)
 }
 
-/// Windows resource paths come back as `\\?\C:\...`; Node 22 cannot resolve a script path in that form.
+/// Windows resource paths come back as `\\?\C:\...`; a script path in that form is not reliably resolved.
 fn plain_path(path: PathBuf) -> PathBuf {
     match path.to_string_lossy().strip_prefix(r"\\?\") {
         Some(rest) if !rest.starts_with("UNC") => PathBuf::from(rest),
@@ -90,8 +90,8 @@ pub fn run() {
 
             let spawned = app
                 .shell()
-                .sidecar("node")
-                .map_err(|error| format!("The bundled Node runtime was not found: {error}"))
+                .sidecar("bun")
+                .map_err(|error| format!("The bundled Bun runtime was not found: {error}"))
                 .and_then(|command| {
                     command
                         .args([entry.clone()])

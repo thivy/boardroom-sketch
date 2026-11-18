@@ -4,15 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prepare:sidecar": "node scripts/prepare-sidecar.mjs",
+    "prepare:sidecar": "bun scripts/prepare-sidecar.mjs",
     "dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
-    "dev:built": "bun run --cwd ../web build && node scripts/prepare-sidecar.mjs && tauri dev",
-    "build": "bun run --cwd ../web build && node scripts/prepare-sidecar.mjs && tauri build --config src-tauri/tauri.local.conf.json",
+    "dev:built": "bun run --cwd ../web build && bun scripts/prepare-sidecar.mjs && tauri dev",
+    "build": "bun run --cwd ../web build && bun scripts/prepare-sidecar.mjs && tauri build --config src-tauri/tauri.local.conf.json",
     "tauri": "tauri",
-    "typecheck": "node --check scripts/prepare-sidecar.mjs",
-    "build:release": "bun run --cwd ../web build && node scripts/prepare-sidecar.mjs && tauri build"
+    "typecheck": "bun build --no-bundle --target=bun scripts/prepare-sidecar.mjs --outdir node_modules/.cache/prepare-sidecar",
+    "build:release": "bun run --cwd ../web build && bun scripts/prepare-sidecar.mjs && tauri build"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2"
+    "@tauri-apps/cli": "^2.12.4"
   }
 }

@@ -11,6 +11,6 @@
   },
   "dependencies": {
     "@app/contracts": "workspace:*",
-    "@github/copilot-sdk": "^1.0.32"
+    "@github/copilot-sdk": "^1.0.34"
   }
 }

@@ -112,7 +112,7 @@ These map one to one onto `CaptionEvent`.
 | `src/index.ts`           | `teamsCdp(options)`: builds the `CaptionSource`.                             |
 | `src/list-meetings.ts`   | Lists pages on Teams domains from the DevTools `/json` endpoint.             |
 | `src/watch-meeting.ts`   | Attaches, injects the observer and exposes the events as an `AsyncIterable`. |
-| `src/cdp.ts`             | Minimal CDP client over the runtime's global `WebSocket` (Node 22+).         |
+| `src/cdp.ts`             | Minimal CDP client over the runtime's global `WebSocket` (Bun, or Node 22+). |
 | `src/observer-script.ts` | The script injected into the Teams page.                                     |
 | `src/launch-teams.ts`    | `prepare`: restarts new Teams on Windows with WebView2 remote debugging.     |
 

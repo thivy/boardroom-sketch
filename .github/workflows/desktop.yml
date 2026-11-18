@@ -75,12 +75,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # The sidecar is a copy of this Bun, so the version shipped is the one pinned here (keep it in step
+      # with "packageManager" in package.json).
       - uses: oven-sh/setup-bun@v2
-
-      # The sidecar is a copy of this Node, and the server uses node:sqlite (22.13+).
-      - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          bun-version: 1.4.4
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -97,7 +96,7 @@ jobs:
         env:
           TAG: ${{ needs.version.outputs.tag }}
         run: |
-          node -e "
+          bun -e "
             const fs = require('fs');
             const file = 'apps/desktop/src-tauri/tauri.conf.json';
             const config = JSON.parse(fs.readFileSync(file, 'utf8'));

@@ -5,7 +5,7 @@ A [Bun](https://bun.sh) workspaces monorepo: a thin [TanStack Start](https://tan
 ```
 apps/web             TanStack Start app: root route and page routes. Nothing else.
 packages/features    One folder per feature: `app-shell` (sidebar layout) and `app-header`.
-apps/desktop         Tauri shell: a native window on the web app, which runs as a bundled Node sidecar.
+apps/desktop         Tauri shell: a native window on the web app, which runs as a bundled Bun sidecar.
 packages/ui  shadcn components, `cn()` helper and the Tailwind theme (`styles.css`).
 packages/contracts   Types shared by client, server and adapters, including the `CaptionSource` port.
 packages/teams-cdp   Interim `CaptionSource` that reads Teams captions over the Chrome DevTools Protocol.
@@ -34,7 +34,7 @@ The database is `./data/transcripts.db` (relative to where the server runs; git-
 
 To store something new, add a store next to `transcripts.ts` that implements its own port from `@app/contracts` and calls `migrate(db, { module: "<name>", steps: [...] })`. Each module keeps its own version in the `schema_versions` table, so stores never share a version number. Wire it in the app next to `openDatabase()`. A session left open by a crash is closed at its last caption on the next start.
 
-The adapter only talks to DevTools on `127.0.0.1` (port from `TEAMS_CDP_PORT`, default 9222). Restarting Teams ends any meeting you are in. It reads the caption elements of the Teams web client, so a Teams UI change can break it; the selectors are in `packages/teams-cdp/src/observer-script.ts`. Needs Node 22+ (global `WebSocket`).
+The adapter only talks to DevTools on `127.0.0.1` (port from `TEAMS_CDP_PORT`, default 9222). Restarting Teams ends any meeting you are in. It reads the caption elements of the Teams web client, so a Teams UI change can break it; the selectors are in `packages/teams-cdp/src/observer-script.ts`. Needs a runtime with a global `WebSocket` (Bun, or Node 22+).
 
 ## Analysis chat
 
@@ -52,17 +52,17 @@ A recorded meeting can also be turned into a graph of what was meant: decisions,
 
 ## Desktop app (Tauri)
 
-`apps/desktop` wraps the app in a native window. The app needs its server (it talks to Teams over CDP, keeps transcripts in SQLite and calls the Copilot SDK), so Tauri ships the built server as a resource and starts it with a bundled Node binary (a sidecar) on a free local port. The window loads it from `127.0.0.1`, and the sidecar stops when the app closes.
+`apps/desktop` wraps the app in a native window. The app needs its server (it talks to Teams over CDP, keeps transcripts in SQLite and calls the Copilot SDK), so Tauri ships the built server as a resource and starts it with a bundled Bun binary (a sidecar) on a free local port. The window loads it from `127.0.0.1`, and the sidecar stops when the app closes.
 
 - Transcripts are kept in the app data folder (`%APPDATA%\dev.thivy.boardroomsketch\transcripts.db` on Windows), not where the app was started from.
 - The Copilot SDK is not bundled into the server, so `prepare-sidecar` installs it next to the server. That brings its runtime package, which makes the installer large (about 200 MB).
-- The sidecar is a copy of the Node that runs the build, so build on the OS you are targeting.
+- The sidecar is a copy of the Bun that runs the build (CI pins it to the version in `packageManager`), so build on the OS you are targeting.
 
 Needs [Rust](https://rustup.rs) and, on Windows, the Visual Studio C++ Build Tools plus WebView2 (included in Windows 11). Open a new terminal after installing Rust so it is on the PATH.
 
 ```bash
 bun run desktop:dev       # opens the window on the Vite dev server: hot reload for web code
-bun run desktop:dev:built # builds the web app and runs it from the bundled Node sidecar, as in a release
+bun run desktop:dev:built # builds the web app and runs it from the bundled Bun sidecar, as in a release
 bun run desktop:build     # unsigned local installer under apps/desktop/src-tauri/target/release/bundle
 bun run desktop:release   # also signs the update packages; needs TAURI_SIGNING_PRIVATE_KEY (CI sets it)
 ```
