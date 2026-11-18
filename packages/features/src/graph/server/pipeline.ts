@@ -37,6 +37,11 @@ export type GraphPipelineOptions = {
   maxModelCalls?: number;
   /** Passed to the turn builder. */
   idleMs?: number;
+  /**
+   * Asked on every caption. While it is false nothing new is followed, and a recording that was being
+   * followed is finished off. Default: always on.
+   */
+  enabled?: () => boolean;
   now?: () => number;
 };
 
@@ -62,10 +67,22 @@ export function createGraphPipeline(options: GraphPipelineOptions) {
     extractTimeoutMs = 120_000,
     maxModelCalls = 400,
     idleMs,
+    enabled = () => true,
     now = Date.now,
   } = options;
 
   const runs = new Map<number, ReturnType<typeof createRun>>();
+  /** Recordings that are no longer followed but still have turns to extract. */
+  const finishing = new Set<Promise<void>>();
+
+  function finish(sessionId: number) {
+    const run = runs.get(sessionId);
+    if (!run) return;
+    runs.delete(sessionId);
+    const done = run.end();
+    finishing.add(done);
+    void done.finally(() => finishing.delete(done));
+  }
 
   function createRun(recording: ActiveRecording) {
     const meetingId = recording.meetingId;
@@ -170,7 +187,8 @@ export function createGraphPipeline(options: GraphPipelineOptions) {
 
       const oldest = Math.min(...pending.map((entry) => entry.queuedAt));
       const wait = flushMs - (now() - oldest);
-      if (!force && !ended && wait > 0) {
+      const urgent = pending.some((entry) => entry.verdict?.route === "extract_now");
+      if (!force && !ended && !urgent && wait > 0) {
         schedule(wait);
         return Promise.resolve();
       }
@@ -256,31 +274,34 @@ export function createGraphPipeline(options: GraphPipelineOptions) {
         })();
         return drained;
       },
-
-      drained: () => drained ?? Promise.resolve(),
     };
   }
 
   const observer: RecordingObserver = {
     caption(recording, caption) {
-      let run = runs.get(recording.session.id);
+      const id = recording.session.id;
+      if (!enabled()) {
+        // Switched off part-way: what was already read still gets extracted.
+        finish(id);
+        return;
+      }
+      let run = runs.get(id);
       if (!run) {
+        // Switched on part-way: the graph follows the meeting from here.
         run = createRun(recording);
-        runs.set(recording.session.id, run);
+        runs.set(id, run);
       }
       run.add(caption);
     },
     ended(recording) {
-      const run = runs.get(recording.session.id);
-      if (!run) return;
-      void run.end().finally(() => runs.delete(recording.session.id));
+      finish(recording.session.id);
     },
   };
 
   return Object.assign(observer, {
-    /** Resolves when every recording that has ended has been fully extracted. */
+    /** Resolves when every recording that is no longer followed has been fully extracted. */
     async idle() {
-      await Promise.all([...runs.values()].map((run) => run.drained()));
+      await Promise.all([...finishing]);
     },
   });
 }

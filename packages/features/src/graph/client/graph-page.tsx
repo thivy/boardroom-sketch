@@ -15,6 +15,7 @@ import { useState } from "react";
 import { AppHeader } from "../../app-header";
 import { GraphCanvas } from "./graph-canvas";
 import { ActivityFeed, NodeDetail, Overview } from "./graph-panels";
+import { LiveGraphSwitch } from "./live-graph-switch";
 import { useLiveGraph, useMeetings } from "./use-live-graph";
 import { useNow } from "./use-now";
 
@@ -82,8 +83,8 @@ export function GraphPage({ meeting: initialMeeting }: { meeting?: string } = {}
 
           {!meeting && !loading && (
             <Placeholder title="No meetings yet">
-              Record a meeting on the Teams captions page. Its graph builds here as the pipeline
-              reads along.
+              Record a meeting on the Teams captions page. Switch on Build graph live there, or
+              press Generate graph on a saved transcript.
             </Placeholder>
           )}
           {meeting && isLoading && <Placeholder title="Loading graph">One moment…</Placeholder>}
@@ -91,7 +92,8 @@ export function GraphPage({ meeting: initialMeeting }: { meeting?: string } = {}
           {graph && graph.nodes.length === 0 && (
             <Placeholder title="Waiting for the first node">
               Decisions, actions, questions and risks appear here as they are said. The graph is
-              only built when the server runs with GRAPH_PIPELINE=on.
+              only built live while Build graph live is switched on; for a saved transcript, press
+              Generate graph on the Transcripts page.
             </Placeholder>
           )}
 
@@ -163,6 +165,7 @@ export function GraphPage({ meeting: initialMeeting }: { meeting?: string } = {}
               </span>
             )}
 
+            <LiveGraphSwitch className="pointer-events-auto h-9 rounded-xl border bg-card/80 px-3 backdrop-blur" />
             <div className="pointer-events-auto relative ml-auto w-full max-w-60 min-w-40">
               <SearchIcon className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input

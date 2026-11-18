@@ -81,7 +81,8 @@ function toTranscript(captions: Caption[]) {
     .join("\n");
 }
 
-export function CaptionsPage() {
+/** `options` is shown beside the recording buttons, for whatever the app wants to offer there. */
+export function CaptionsPage({ options }: { options?: React.ReactNode } = {}) {
   const [selected, setSelected] = useState<string>();
   const stream = useCaptionStream();
   const end = useRef<HTMLDivElement>(null);
@@ -223,6 +224,7 @@ export function CaptionsPage() {
               Start recording
             </Button>
           )}
+          {options}
         </div>
 
         {start.isError && (

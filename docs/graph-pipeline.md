@@ -8,15 +8,24 @@ caption lines ─▶ turns ─▶ Triage (advises, async) ─┐
                     └──────────────▶ batch ─▶ Extract ─▶ checks ─▶ graph.apply
 ```
 
-| What                                                       | Where                                                                 |
-| ---------------------------------------------------------- | --------------------------------------------------------------------- |
-| Turns, Triage, Extract, the pipeline and the HTTP handlers | `packages/features/src/graph/server/`                                 |
-| The model port (`StructuredModel`) and its Copilot adapter | `contracts/src/model.ts`, `copilot-sdk/src/model.ts`                  |
-| Pipeline log (verdicts, runs, rejections)                  | `contracts/src/pipeline-log.ts`, `storage-sqlite/src/pipeline-log.ts` |
-| Wiring, and the switch                                     | `apps/web/src/graph-handlers.ts`, `storage.ts`                        |
+| What                                                       | Where                                                                                              |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Turns, Triage, Extract, the pipeline and the HTTP handlers | `packages/features/src/graph/server/`                                                              |
+| The model port (`StructuredModel`) and its Copilot adapter | `contracts/src/model.ts`, `copilot-sdk/src/model.ts`                                               |
+| Pipeline log (verdicts, runs, rejections)                  | `contracts/src/pipeline-log.ts`, `storage-sqlite/src/pipeline-log.ts`                              |
+| Wiring                                                     | `apps/web/src/graph-handlers.ts`, `storage.ts`                                                     |
+| The live-graph switch                                      | `contracts/src/settings.ts`, `storage-sqlite/src/settings.ts`, `graph/server/live-graph-switch.ts` |
 
-It is **off by default**. Set `GRAPH_PIPELINE=on` and every recording is followed by the pipeline. Each
-model call counts against the signed-in Copilot account.
+It is **off by default**. The **Build graph live** switch (on the Teams captions page and on the Meeting
+graph page) turns it on; the choice is kept in the database. Each model call counts against the signed-in
+Copilot account.
+
+- The switch applies at once, also to a recording that is running. Switched on part-way, the graph follows
+  the meeting from that moment; earlier turns are not read (press **Generate graph** on the transcript
+  afterwards to cover them). Switched off part-way, nothing new is read, and the turns already read are
+  still extracted.
+- The server reads the setting from memory on every caption, so changing it never waits on the database.
+- Endpoint: `GET /api/graph/live` answers `{ enabled }`; `PUT` with `{ "enabled": true | false }` changes it.
 
 ## Turns
 
@@ -66,7 +75,7 @@ A failed call retries once, then the turns are dropped and the failure logged. A
 ## Generating a graph from a saved transcript
 
 The **Generate graph** button on the Transcripts page builds the graph for a transcript that is already in
-the database. It does not need `GRAPH_PIPELINE`; it runs only when pressed, and counts against the
+the database. It does not need the live-graph switch; it runs only when pressed, and counts against the
 signed-in Copilot account like any other call.
 
 - The transcript is cut into turns (runs of lines by one speaker, at most about 1,200 characters each),

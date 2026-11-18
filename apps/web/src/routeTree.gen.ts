@@ -26,6 +26,7 @@ import { Route as ApiChatStatusRouteImport } from './routes/api/chat.status'
 import { Route as ApiGraphBuildRouteImport } from './routes/api/graph.build'
 import { Route as ApiGraphEventsRouteImport } from './routes/api/graph.events'
 import { Route as ApiGraphHistoryRouteImport } from './routes/api/graph.history'
+import { Route as ApiGraphLiveRouteImport } from './routes/api/graph.live'
 import { Route as ApiTranscriptsExportRouteImport } from './routes/api/transcripts.export'
 import { Route as ApiTranscriptsSessionRouteImport } from './routes/api/transcripts.session'
 
@@ -114,6 +115,11 @@ const ApiGraphHistoryRoute = ApiGraphHistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => ApiGraphRoute,
 } as any)
+const ApiGraphLiveRoute = ApiGraphLiveRouteImport.update({
+  id: '/live',
+  path: '/live',
+  getParentRoute: () => ApiGraphRoute,
+} as any)
 const ApiTranscriptsExportRoute = ApiTranscriptsExportRouteImport.update({
   id: '/export',
   path: '/export',
@@ -143,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/api/graph/build': typeof ApiGraphBuildRoute
   '/api/graph/events': typeof ApiGraphEventsRoute
   '/api/graph/history': typeof ApiGraphHistoryRoute
+  '/api/graph/live': typeof ApiGraphLiveRoute
   '/api/transcripts/export': typeof ApiTranscriptsExportRoute
   '/api/transcripts/session': typeof ApiTranscriptsSessionRoute
 }
@@ -164,6 +171,7 @@ export interface FileRoutesByTo {
   '/api/graph/build': typeof ApiGraphBuildRoute
   '/api/graph/events': typeof ApiGraphEventsRoute
   '/api/graph/history': typeof ApiGraphHistoryRoute
+  '/api/graph/live': typeof ApiGraphLiveRoute
   '/api/transcripts/export': typeof ApiTranscriptsExportRoute
   '/api/transcripts/session': typeof ApiTranscriptsSessionRoute
 }
@@ -186,6 +194,7 @@ export interface FileRoutesById {
   '/api/graph/build': typeof ApiGraphBuildRoute
   '/api/graph/events': typeof ApiGraphEventsRoute
   '/api/graph/history': typeof ApiGraphHistoryRoute
+  '/api/graph/live': typeof ApiGraphLiveRoute
   '/api/transcripts/export': typeof ApiTranscriptsExportRoute
   '/api/transcripts/session': typeof ApiTranscriptsSessionRoute
 }
@@ -209,6 +218,7 @@ export interface FileRouteTypes {
     | '/api/graph/build'
     | '/api/graph/events'
     | '/api/graph/history'
+    | '/api/graph/live'
     | '/api/transcripts/export'
     | '/api/transcripts/session'
   fileRoutesByTo: FileRoutesByTo
@@ -230,6 +240,7 @@ export interface FileRouteTypes {
     | '/api/graph/build'
     | '/api/graph/events'
     | '/api/graph/history'
+    | '/api/graph/live'
     | '/api/transcripts/export'
     | '/api/transcripts/session'
   id:
@@ -251,6 +262,7 @@ export interface FileRouteTypes {
     | '/api/graph/build'
     | '/api/graph/events'
     | '/api/graph/history'
+    | '/api/graph/live'
     | '/api/transcripts/export'
     | '/api/transcripts/session'
   fileRoutesById: FileRoutesById
@@ -392,6 +404,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGraphHistoryRouteImport
       parentRoute: typeof ApiGraphRoute
     }
+    '/api/graph/live': {
+      id: '/api/graph/live'
+      path: '/live'
+      fullPath: '/api/graph/live'
+      preLoaderRoute: typeof ApiGraphLiveRouteImport
+      parentRoute: typeof ApiGraphRoute
+    }
     '/api/transcripts/export': {
       id: '/api/transcripts/export'
       path: '/export'
@@ -424,12 +443,14 @@ interface ApiGraphRouteChildren {
   ApiGraphBuildRoute: typeof ApiGraphBuildRoute
   ApiGraphEventsRoute: typeof ApiGraphEventsRoute
   ApiGraphHistoryRoute: typeof ApiGraphHistoryRoute
+  ApiGraphLiveRoute: typeof ApiGraphLiveRoute
 }
 
 const ApiGraphRouteChildren: ApiGraphRouteChildren = {
   ApiGraphBuildRoute: ApiGraphBuildRoute,
   ApiGraphEventsRoute: ApiGraphEventsRoute,
   ApiGraphHistoryRoute: ApiGraphHistoryRoute,
+  ApiGraphLiveRoute: ApiGraphLiveRoute,
 }
 
 const ApiGraphRouteWithChildren = ApiGraphRoute._addFileChildren(

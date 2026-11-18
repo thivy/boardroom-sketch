@@ -3,11 +3,12 @@ import {
   createGraphBuilder,
   createGraphHandlers,
   createGraphPipeline,
+  createLiveGraphSwitch,
 } from "@app/features/graph/server";
-import { graphStore, pipelineLog, transcriptStore } from "./storage";
+import { graphStore, pipelineLog, settingsStore, transcriptStore } from "./storage";
 
-// "Generate graph" on a saved transcript. It runs only when someone asks for it, whatever
-// GRAPH_PIPELINE says, and counts against the signed-in Copilot account.
+// "Generate graph" on a saved transcript. It runs only when someone asks for it, whatever the live
+// graph switch says, and counts against the signed-in Copilot account.
 const builder = createGraphBuilder({
   graph: graphStore,
   log: pipelineLog,
@@ -15,11 +16,18 @@ const builder = createGraphBuilder({
   transcripts: transcriptStore,
 });
 
-export const graphHandlers = createGraphHandlers(graphStore, pipelineLog, builder);
+// Building the graph while a meeting is recorded asks a model about it as it happens and counts
+// against the signed-in Copilot account, so it is off until the person switches it on in the app.
+const liveGraph = createLiveGraphSwitch(settingsStore);
 
-// Building the graph asks a model about the meeting as it happens and counts against the signed-in
-// Copilot account, so it is off until GRAPH_PIPELINE=on. Swap `copilotModel()` to use another model.
-export const recordingObservers =
-  process.env.GRAPH_PIPELINE === "on"
-    ? [createGraphPipeline({ graph: graphStore, log: pipelineLog, model: copilotModel() })]
-    : [];
+export const graphHandlers = createGraphHandlers(graphStore, pipelineLog, builder, liveGraph);
+
+// Swap `copilotModel()` to use another model.
+export const recordingObservers = [
+  createGraphPipeline({
+    graph: graphStore,
+    log: pipelineLog,
+    model: copilotModel(),
+    enabled: liveGraph.enabled,
+  }),
+];

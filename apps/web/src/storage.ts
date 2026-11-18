@@ -2,6 +2,7 @@ import {
   openDatabase,
   graphSqlite,
   pipelineLogSqlite,
+  settingsSqlite,
   transcriptsSqlite,
 } from "@app/storage-sqlite";
 
@@ -10,3 +11,4 @@ export const database = openDatabase();
 export const transcriptStore = transcriptsSqlite(database);
 export const graphStore = graphSqlite(database);
 export const pipelineLog = pipelineLogSqlite(database);
+export const settingsStore = settingsSqlite(database);

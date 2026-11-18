@@ -5,6 +5,7 @@ import {
   type PipelineLog,
 } from "@app/contracts";
 import { BuildError, type GraphBuilder } from "./build";
+import type { LiveGraphSwitch } from "./live-graph-switch";
 
 const json = (body: unknown, status = 200) => Response.json(body, { status });
 const param = (request: Request, name: string) => new URL(request.url).searchParams.get(name);
@@ -20,11 +21,29 @@ const sessionParam = (request: Request) => {
 };
 
 /**
- * The graph endpoints, as plain `(Request) => Response` handlers over a `GraphStore`, a `PipelineLog`
- * and a `GraphBuilder`.
+ * The graph endpoints, as plain `(Request) => Response` handlers over a `GraphStore`, a `PipelineLog`,
+ * a `GraphBuilder` and the live-graph switch.
  */
-export function createGraphHandlers(graph: GraphStore, log: PipelineLog, builder: GraphBuilder) {
+export function createGraphHandlers(
+  graph: GraphStore,
+  log: PipelineLog,
+  builder: GraphBuilder,
+  liveGraph: LiveGraphSwitch,
+) {
   return {
+    /** `GET`: whether the graph is built while a meeting is recorded. */
+    async liveStatus(): Promise<Response> {
+      return json({ enabled: await liveGraph.get() });
+    },
+
+    /** `PUT { enabled }`: turns building the graph during a recording on or off. */
+    async liveUpdate(request: Request): Promise<Response> {
+      if (!isJson(request)) return json({ error: "Expected application/json" }, 415);
+      const body = (await request.json().catch(() => ({}))) as { enabled?: unknown };
+      if (typeof body.enabled !== "boolean") return json({ error: "Missing enabled" }, 400);
+      return json({ enabled: await liveGraph.set(body.enabled) });
+    },
+
     /** `GET ?session=<id>&meeting=<id>`: where building the graph from that transcript is. */
     async buildStatus(request: Request): Promise<Response> {
       const session = sessionParam(request);
