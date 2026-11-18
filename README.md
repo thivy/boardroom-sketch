@@ -114,7 +114,8 @@ bun run dev # http://localhost:3000
 | `bun run dev`       | Start the Vite dev server          |
 | `bun run build`     | Production build of `apps/web`     |
 | `bun run start`     | Serve the production build (Nitro) |
-| `bun run typecheck` | Typecheck every workspace          |
+| `bun run typecheck` | Typecheck every workspace with tsrs (via oxlint, beta; also runs the lint rules) |
+| `bun run typecheck:tsc` | The same with `tsc` in each workspace, the reference |
 | `bun run lint`      | oxlint                             |
 | `bun run lint:types`| oxlint with tsrs: type-aware rules and a fast type check (beta; `typecheck` stays the reference) |
 | `bun run fmt`       | oxfmt (`fmt:check` to verify)      |
