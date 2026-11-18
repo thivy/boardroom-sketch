@@ -4,7 +4,9 @@ import * as React from "react";
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
+import { useStore } from "zustand";
 import { cn } from "@app/ui/lib/utils";
+import { createSidebarStore } from "@app/ui/lib/sidebar-store";
 
 import { useIsMobile } from "@app/ui/hooks/use-mobile";
 import { Button } from "@app/ui/components/button";
@@ -63,25 +65,33 @@ function SidebarProvider({
   onOpenChange?: (open: boolean) => void;
 }) {
   const isMobile = useIsMobile();
-  const [openMobile, setOpenMobile] = React.useState(false);
+  const store = React.useMemo(() => createSidebarStore(defaultOpen), [defaultOpen]);
+  const openMobile = useStore(store, (state) => state.openMobile);
+  const setOpenMobile = React.useCallback(
+    (value: boolean | ((value: boolean) => boolean)) =>
+      store.setState((state) => ({
+        openMobile: typeof value === "function" ? value(state.openMobile) : value,
+      })),
+    [store],
+  );
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
-  const [_open, _setOpen] = React.useState(defaultOpen);
-  const open = openProp ?? _open;
+  const storeOpen = useStore(store, (state) => state.open);
+  const open = openProp ?? storeOpen;
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
       const openState = typeof value === "function" ? value(open) : value;
       if (setOpenProp) {
         setOpenProp(openState);
       } else {
-        _setOpen(openState);
+        store.setState({ open: openState });
       }
 
       // This sets the cookie to keep the sidebar state.
       document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
     },
-    [setOpenProp, open],
+    [setOpenProp, open, store],
   );
 
   // Helper to toggle the sidebar.
@@ -581,10 +591,9 @@ function SidebarMenuSkeleton({
 }: React.ComponentProps<"div"> & {
   showIcon?: boolean;
 }) {
-  // Random width between 50 to 90%.
-  const [width] = React.useState(() => {
-    return `${Math.floor(Math.random() * 40) + 50}%`;
-  });
+  // A width between 50 and 90%, steady for this skeleton and different between skeletons.
+  const id = React.useId();
+  const width = `${50 + ([...id].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 40)}%`;
 
   return (
     <div

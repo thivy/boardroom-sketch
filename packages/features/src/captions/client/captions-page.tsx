@@ -19,8 +19,15 @@ import {
   RefreshCwIcon,
   SquareIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { useCaptionStream, type StreamState } from "./use-caption-stream";
+import { useEffect, useRef } from "react";
+import {
+  followRecording,
+  markResumed,
+  resetCaptionStore,
+  selectMeeting,
+  useCaptionStore,
+  type StreamState,
+} from "./caption-store";
 
 const STATE_LABEL: Record<StreamState, string> = {
   idle: "Not recording",
@@ -56,9 +63,16 @@ function toTranscript(captions: Caption[]) {
 
 /** `options` is shown beside the recording buttons, for whatever the app wants to offer there. */
 export function CaptionsPage({ options }: { options?: React.ReactNode } = {}) {
-  const [selected, setSelected] = useState<string>();
-  const stream = useCaptionStream();
+  const selected = useCaptionStore((state) => state.selectedMeetingId);
+  const recordingId = useCaptionStore((state) => state.recordingId);
+  const resumed = useCaptionStore((state) => state.resumed);
+  const streamState = useCaptionStore((state) => state.state);
+  const captions = useCaptionStore((state) => state.captions);
+  const captionsVisible = useCaptionStore((state) => state.captionsVisible);
   const end = useRef<HTMLDivElement>(null);
+
+  // Leaving the page stops following; the recording itself keeps running on the server.
+  useEffect(() => resetCaptionStore, []);
 
   const targets = useQuery({
     queryKey: ["captions", "meetings"],
@@ -81,16 +95,12 @@ export function CaptionsPage({ options }: { options?: React.ReactNode } = {}) {
     mutationFn: restartTeams,
     onSuccess: () => void targets.refetch(),
   });
-  const connected = stream.state === "connecting" || stream.state === "live";
-  const [recordingId, setRecordingId] = useState<string>();
+  const connected = streamState === "connecting" || streamState === "live";
 
   const start = useMutation({
     mutationKey: ["captions", "start-recording"],
     mutationFn: startRecording,
-    onSuccess: (_, meetingId) => {
-      setRecordingId(meetingId);
-      stream.follow(meetingId);
-    },
+    onSuccess: (_, meetingId) => followRecording(meetingId),
   });
   const stop = useMutation({
     mutationKey: ["captions", "stop-recording"],
@@ -98,7 +108,6 @@ export function CaptionsPage({ options }: { options?: React.ReactNode } = {}) {
   });
 
   // A recording keeps running on the server when this page closes; pick it up again on return.
-  const resumed = useRef(false);
   const running = useQuery({
     queryKey: ["captions", "recordings"],
     queryFn: fetchRecordings,
@@ -108,16 +117,15 @@ export function CaptionsPage({ options }: { options?: React.ReactNode } = {}) {
   const runningTitle = running.data?.find((item) => item.meetingId === recordingId)?.title;
   useEffect(() => {
     const active = running.data?.[0];
-    if (!active || resumed.current) return;
-    resumed.current = true;
-    setRecordingId(active.meetingId);
-    setSelected(active.meetingId);
-    stream.follow(active.meetingId);
-  }, [running.data, stream]);
+    if (!active || resumed) return;
+    markResumed();
+    selectMeeting(active.meetingId);
+    followRecording(active.meetingId);
+  }, [running.data, resumed]);
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end" });
-  }, [stream.captions]);
+  }, [captions]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -160,7 +168,7 @@ export function CaptionsPage({ options }: { options?: React.ReactNode } = {}) {
             <Combobox
               items={targets.data}
               value={targets.data.find((item) => item.id === target) ?? null}
-              onValueChange={(item) => item && setSelected(item.id)}
+              onValueChange={(item) => item && selectMeeting(item.id)}
               itemToStringLabel={(item: Meeting) => item.title || item.id}
               isItemEqualToValue={(a: Meeting, b: Meeting) => a.id === b.id}
               disabled={connected || start.isPending}
@@ -245,9 +253,9 @@ export function CaptionsPage({ options }: { options?: React.ReactNode } = {}) {
 
       <div className="flex items-center justify-between gap-2 border-b px-4 py-2 text-[13px]">
         <span className="text-muted-foreground">
-          {STATE_LABEL[stream.state]}
+          {STATE_LABEL[streamState]}
           {runningTitle && connected && <> · {runningTitle}</>}
-          {stream.state === "live" && stream.captionsVisible === false && (
+          {streamState === "live" && captionsVisible === false && (
             <> · turn on live captions in the meeting</>
           )}
         </span>
@@ -256,8 +264,8 @@ export function CaptionsPage({ options }: { options?: React.ReactNode } = {}) {
             variant="ghost"
             size="icon-sm"
             aria-label="Copy transcript"
-            disabled={stream.captions.length === 0}
-            onClick={() => void navigator.clipboard.writeText(toTranscript(stream.captions))}
+            disabled={captions.length === 0}
+            onClick={() => void navigator.clipboard.writeText(toTranscript(captions))}
           >
             <CopyIcon />
           </Button>
@@ -265,10 +273,10 @@ export function CaptionsPage({ options }: { options?: React.ReactNode } = {}) {
             variant="ghost"
             size="icon-sm"
             aria-label="Download transcript"
-            disabled={stream.captions.length === 0}
+            disabled={captions.length === 0}
             onClick={() => {
               const url = URL.createObjectURL(
-                new Blob([toTranscript(stream.captions)], { type: "text/plain" }),
+                new Blob([toTranscript(captions)], { type: "text/plain" }),
               );
               const link = Object.assign(document.createElement("a"), {
                 href: url,
@@ -284,11 +292,11 @@ export function CaptionsPage({ options }: { options?: React.ReactNode } = {}) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        {stream.captions.length === 0 ? (
+        {captions.length === 0 ? (
           <p className="text-sm text-muted-foreground">Captions appear here as people speak.</p>
         ) : (
           <ul className="grid gap-3">
-            {stream.captions.map(({ id, speaker, text }) => (
+            {captions.map(({ id, speaker, text }) => (
               <li key={id}>
                 {speaker && (
                   <div className="text-xs font-[560] text-muted-foreground">{speaker}</div>

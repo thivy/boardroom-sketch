@@ -1,10 +1,24 @@
 import { Button } from "@app/ui/components/button";
 import { DownloadIcon, LoaderCircleIcon } from "lucide-react";
-import { useAppUpdate } from "./use-app-update";
+import { useEffect } from "react";
+import { canUpdate, checkForUpdate, installUpdate, useUpdateStore } from "./update-store";
 
-/** A card in the corner that appears when a newer version of the desktop app has been released. */
+const CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * A card in the corner that appears when a newer version of the desktop app has been released. It
+ * checks on start and every few hours; inside a normal browser there is no updater, so nothing shows.
+ */
 export function UpdateBanner() {
-  const { state, install } = useAppUpdate();
+  const state = useUpdateStore((store) => store.state);
+
+  useEffect(() => {
+    if (!canUpdate()) return;
+    void checkForUpdate();
+    const timer = setInterval(checkForUpdate, CHECK_EVERY_MS);
+    return () => clearInterval(timer);
+  }, []);
+
   if (state.status === "none") return null;
 
   return (
@@ -17,7 +31,7 @@ export function UpdateBanner() {
       {state.status === "available" && (
         <>
           <p className="text-muted-foreground">Download the update and restart to use it.</p>
-          <Button size="sm" onClick={() => void install()}>
+          <Button size="sm" onClick={() => void installUpdate()}>
             <DownloadIcon />
             Update and restart
           </Button>
@@ -36,7 +50,7 @@ export function UpdateBanner() {
           <p role="alert" className="text-destructive">
             The update failed: {state.message}
           </p>
-          <Button size="sm" variant="outline" onClick={() => void install()}>
+          <Button size="sm" variant="outline" onClick={() => void installUpdate()}>
             Try again
           </Button>
         </>

@@ -1,7 +1,7 @@
 import { ArrowRightIcon, GitBranchIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import type { Activity } from "./activity";
 import { Card, StatusPill, ago } from "./panel-parts";
-import { useNow } from "./use-now";
+import { useNow } from "./clock-store";
 import { NODE_VISUALS, edgeLabel } from "./visuals";
 
 const ACTIVITY_ICON = {

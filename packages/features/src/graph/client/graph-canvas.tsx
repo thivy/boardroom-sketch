@@ -10,8 +10,13 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
-  useState,
 } from "react";
+import {
+  resetGraphCanvasStore,
+  setFollowing,
+  setHoveredNode,
+  useGraphCanvasStore,
+} from "./graph-canvas-store";
 import { ForceLayout } from "./force-layout";
 import {
   FAMILY_VISUALS,
@@ -74,9 +79,11 @@ export function GraphCanvas({
   const dirty = useRef(true);
   const autoFit = useRef(true);
   const drag = useRef<Drag | null>(null);
-  const [layout] = useState(() => new ForceLayout());
-  const [following, setFollowing] = useState(true);
-  const [hover, setHover] = useState<string>();
+  const layout = useMemo(() => new ForceLayout(), []);
+  const following = useGraphCanvasStore((state) => state.following);
+  const hover = useGraphCanvasStore((state) => state.hoveredNodeId);
+
+  useEffect(() => resetGraphCanvasStore, []);
 
   const model = useMemo(() => {
     const nodes = graph.nodes.filter((node) => !hiddenTypes.has(node.type));
@@ -476,8 +483,8 @@ export function GraphCanvas({
                   }}
                   className="cursor-pointer"
                   onPointerDown={(event) => startNodeDrag(event, node.id)}
-                  onPointerEnter={() => setHover(node.id)}
-                  onPointerLeave={() => setHover(undefined)}
+                  onPointerEnter={() => setHoveredNode(node.id)}
+                  onPointerLeave={() => setHoveredNode(undefined)}
                 >
                   <g
                     className="origin-center animate-[node-pop_360ms_cubic-bezier(0.2,1.2,0.4,1)_both] transition-opacity duration-200 [transform-box:fill-box]"

@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useSyncExternalStore } from "react";
 
 const MOBILE_BREAKPOINT = 768;
 const QUERY = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`;
@@ -11,7 +11,7 @@ function subscribe(onChange: () => void) {
 
 export function useIsMobile() {
   // The server has no viewport, so it renders the desktop layout first.
-  return React.useSyncExternalStore(
+  return useSyncExternalStore(
     subscribe,
     () => window.matchMedia(QUERY).matches,
     () => false,

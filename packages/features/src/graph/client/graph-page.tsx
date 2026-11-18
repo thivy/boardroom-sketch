@@ -9,17 +9,25 @@ import {
 import { Empty, EmptyDescription, EmptyHeader } from "@app/ui/components/empty";
 import { Input } from "@app/ui/components/input";
 import { cn } from "@app/ui/lib/utils";
-import type { NodeType } from "@app/contracts";
 import { ChevronsUpDownIcon, NetworkIcon, SearchIcon, XIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect } from "react";
 import { AppHeader } from "../../app-header";
 import { GraphCanvas } from "./graph-canvas";
+import {
+  chooseMeeting,
+  resetGraphViewStore,
+  selectNode,
+  setGraphQuery,
+  toggleNodeType,
+  useGraphViewStore,
+} from "./graph-view-store";
 import { ActivityFeed } from "./activity-feed";
 import { NodeDetail } from "./node-detail";
 import { Overview } from "./overview";
 import { LiveGraphSwitch } from "./live-graph-switch";
+import { resetGraphActivityStore } from "./graph-activity-store";
 import { useLiveGraph, useMeetings } from "./use-live-graph";
-import { useNow } from "./use-now";
+import { useNow } from "./clock-store";
 
 const BUSY_MS = 5000;
 
@@ -41,10 +49,18 @@ function Placeholder({ title, children }: { title: string; children: React.React
 
 export function GraphPage({ meeting: initialMeeting }: { meeting?: string } = {}) {
   const { meetings, loading } = useMeetings();
-  const [chosen, setChosen] = useState<string | undefined>(initialMeeting);
-  const [selectedId, setSelectedId] = useState<string>();
-  const [hiddenTypes, setHiddenTypes] = useState<ReadonlySet<NodeType>>(new Set());
-  const [query, setQuery] = useState("");
+  const chosen = useGraphViewStore((state) => state.chosenMeetingId) ?? initialMeeting;
+  const selectedId = useGraphViewStore((state) => state.selectedNodeId);
+  const hiddenTypes = useGraphViewStore((state) => state.hiddenTypes);
+  const query = useGraphViewStore((state) => state.query);
+
+  useEffect(
+    () => () => {
+      resetGraphViewStore();
+      resetGraphActivityStore();
+    },
+    [],
+  );
 
   const meeting = meetings.find((item) => item.id === chosen) ?? meetings[0];
   const { graph, isError, error, isLoading, activity, fresh, changedAt } = useLiveGraph(
@@ -52,18 +68,10 @@ export function GraphPage({ meeting: initialMeeting }: { meeting?: string } = {}
   );
 
   // "Building" fades back to idle some seconds after the last change.
-  const now = useNow(1000);
+  const now = useNow();
   const building = changedAt !== undefined && now - changedAt < BUSY_MS;
 
   const selected = graph?.nodes.find((node) => node.id === selectedId);
-
-  const select = (id: string | undefined) => setSelectedId(id);
-  const toggleType = (type: NodeType) =>
-    setHiddenTypes((current) => {
-      const next = new Set(current);
-      if (!next.delete(type)) next.add(type);
-      return next;
-    });
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -79,7 +87,7 @@ export function GraphPage({ meeting: initialMeeting }: { meeting?: string } = {}
               query={query}
               selectedId={selected?.id}
               fresh={fresh}
-              onSelect={select}
+              onSelect={selectNode}
             />
           )}
 
@@ -121,10 +129,7 @@ export function GraphPage({ meeting: initialMeeting }: { meeting?: string } = {}
               <DropdownMenuContent className="w-80">
                 <DropdownMenuRadioGroup
                   value={meeting?.id}
-                  onValueChange={(value) => {
-                    setChosen(value as string);
-                    setSelectedId(undefined);
-                  }}
+                  onValueChange={(value) => chooseMeeting(value as string)}
                 >
                   {meetings.map((item) => (
                     <DropdownMenuRadioItem key={item.id} value={item.id}>
@@ -172,7 +177,7 @@ export function GraphPage({ meeting: initialMeeting }: { meeting?: string } = {}
               <SearchIcon className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => setGraphQuery(event.target.value)}
                 placeholder="Find a node or person"
                 aria-label="Find a node or person"
                 className="h-9 rounded-xl border-border bg-card/80 pr-8 pl-8 backdrop-blur"
@@ -181,7 +186,7 @@ export function GraphPage({ meeting: initialMeeting }: { meeting?: string } = {}
                 <button
                   type="button"
                   aria-label="Clear search"
-                  onClick={() => setQuery("")}
+                  onClick={() => setGraphQuery("")}
                   className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   <XIcon className="size-3.5" />
@@ -192,11 +197,13 @@ export function GraphPage({ meeting: initialMeeting }: { meeting?: string } = {}
         </section>
 
         <aside className="flex min-h-0 flex-col gap-3 lg:overflow-y-auto">
-          {graph && <Overview graph={graph} hiddenTypes={hiddenTypes} onToggleType={toggleType} />}
-          {graph && selected && (
-            <NodeDetail key={selected.id} node={selected} graph={graph} onSelect={select} />
+          {graph && (
+            <Overview graph={graph} hiddenTypes={hiddenTypes} onToggleType={toggleNodeType} />
           )}
-          {graph && <ActivityFeed activity={activity} onSelect={select} />}
+          {graph && selected && (
+            <NodeDetail key={selected.id} node={selected} graph={graph} onSelect={selectNode} />
+          )}
+          {graph && <ActivityFeed activity={activity} onSelect={selectNode} />}
         </aside>
       </div>
     </div>

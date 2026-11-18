@@ -1,26 +1,12 @@
 import type { ActiveRecording, GraphOp, MeetingGraph, StoredMeeting } from "@app/contracts";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
-import { type Activity, diffGraphs } from "./activity";
+import { useEffect, useRef } from "react";
+import { diffGraphs } from "./activity";
+import { expireFreshNodes, recordGraphChanges, useGraphActivity } from "./graph-activity-store";
 import { request } from "../../shared/client/api-request";
 
 const POLL_MS = 1500;
 const FRESH_MS = 6000;
-const MAX_ACTIVITY = 60;
-
-type Tracker = {
-  meetingId: string | undefined;
-  activity: Activity[];
-  /** Nodes that appeared or moved on lately, with when. */
-  fresh: Map<string, number>;
-  changedAt?: number;
-};
-
-const emptyTracker = (meetingId: string | undefined): Tracker => ({
-  meetingId,
-  activity: [],
-  fresh: new Map(),
-});
 
 export type MeetingChoice = { id: string; title: string; live: boolean };
 
@@ -67,9 +53,7 @@ export function useLiveGraph(meetingId: string | undefined) {
   });
 
   const previous = useRef<{ meetingId?: string; graph?: MeetingGraph }>({});
-  const [tracker, setTracker] = useState<Tracker>(() => emptyTracker(meetingId));
-  // Switching meetings starts a clean slate without an effect to reset it.
-  const current = tracker.meetingId === meetingId ? tracker : emptyTracker(meetingId);
+  const { activity, fresh, changedAt } = useGraphActivity(meetingId);
 
   const graph = query.data;
   useEffect(() => {
@@ -81,46 +65,25 @@ export function useLiveGraph(meetingId: string | undefined) {
 
     const now = Date.now();
     const found = diffGraphs(last.graph, graph, now);
-    if (found.length === 0) return;
-    setTracker((existing) => {
-      const base = existing.meetingId === meetingId ? existing : emptyTracker(meetingId);
-      const fresh = new Map(base.fresh);
-      for (const item of found) if (item.nodeId) fresh.set(item.nodeId, now);
-      return {
-        meetingId,
-        changedAt: now,
-        activity: [...found.reverse(), ...base.activity].slice(0, MAX_ACTIVITY),
-        fresh,
-      };
-    });
+    if (found.length > 0) recordGraphChanges(meetingId, found, now);
   }, [graph, meetingId]);
 
   // Fresh marks fade by themselves.
-  const freshCount = current.fresh.size;
+  const freshCount = fresh.size;
   useEffect(() => {
-    if (freshCount === 0) return;
-    const timer = setTimeout(() => {
-      const cutoff = Date.now() - FRESH_MS;
-      setTracker((existing) =>
-        existing.meetingId === meetingId
-          ? {
-              ...existing,
-              fresh: new Map([...existing.fresh].filter(([, at]) => at > cutoff)),
-            }
-          : existing,
-      );
-    }, FRESH_MS);
+    if (freshCount === 0 || meetingId === undefined) return;
+    const timer = setTimeout(() => expireFreshNodes(meetingId, Date.now() - FRESH_MS), FRESH_MS);
     return () => clearTimeout(timer);
-  }, [freshCount, current.changedAt, meetingId]);
+  }, [freshCount, changedAt, meetingId]);
 
   return {
     graph: graph?.meetingId === meetingId ? graph : undefined,
     isError: query.isError,
     error: query.error,
     isLoading: meetingId !== undefined && query.isPending,
-    activity: current.activity,
-    fresh: current.fresh,
-    changedAt: current.changedAt,
+    activity,
+    fresh,
+    changedAt,
   };
 }
 

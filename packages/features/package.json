@@ -18,10 +18,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@app/ui": "workspace:*",
     "@app/contracts": "workspace:*",
+    "@app/ui": "workspace:*",
     "@tanstack/react-query": "^5.105.0",
-    "lucide-react": "^1.62.0"
+    "lucide-react": "^1.62.0",
+    "zustand": "^5.1.0"
   },
   "peerDependencies": {
     "react": "^19",

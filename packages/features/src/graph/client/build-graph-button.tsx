@@ -11,8 +11,9 @@ import { Button, buttonVariants } from "@app/ui/components/button";
 import type { GraphBuildStatus, StoredSession } from "@app/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LoaderCircleIcon, NetworkIcon, SquareIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect } from "react";
 import { request, jsonRequest } from "../../shared/client/api-request";
+import { askToReplaceGraph, closeReplaceGraph, useGraphBuildStore } from "./graph-build-store";
 
 /**
  * Builds the meeting's graph from one saved transcript: the model reads the transcript in order, a few
@@ -27,8 +28,10 @@ export function BuildGraphButton({
   meetingId: string;
 }) {
   const queryClient = useQueryClient();
-  const [confirming, setConfirming] = useState(false);
+  const confirming = useGraphBuildStore((state) => state.confirmingSessionId === session.id);
   const key = ["graph", "build", session.id];
+
+  useEffect(() => closeReplaceGraph, []);
 
   const status = useQuery({
     queryKey: key,
@@ -46,7 +49,7 @@ export function BuildGraphButton({
         jsonRequest("POST", { sessionId: session.id, replace }),
       ),
     onSuccess: (data) => {
-      setConfirming(false);
+      closeReplaceGraph();
       queryClient.setQueryData(key, data);
       void queryClient.invalidateQueries({ queryKey: ["graph"] });
     },
@@ -96,7 +99,7 @@ export function BuildGraphButton({
               ? "Stop the recording first"
               : "Reads the transcript with the Copilot model, about one call for every 8 speaker turns"
           }
-          onClick={() => (hasGraph ? setConfirming(true) : start.mutate(false))}
+          onClick={() => (hasGraph ? askToReplaceGraph(session.id) : start.mutate(false))}
         >
           {start.isPending ? <LoaderCircleIcon className="animate-spin" /> : <NetworkIcon />}
           {hasGraph ? "Rebuild graph" : "Generate graph"}
@@ -128,7 +131,7 @@ export function BuildGraphButton({
       <AlertDialog
         open={confirming}
         onOpenChange={(open) => {
-          if (!open && !start.isPending) setConfirming(false);
+          if (!open && !start.isPending) closeReplaceGraph();
         }}
       >
         <AlertDialogContent>

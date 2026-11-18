@@ -13,9 +13,17 @@ import { cn } from "@app/ui/lib/utils";
 import type { Meeting, SessionTranscript, StoredMeeting, StoredSession } from "@app/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DownloadIcon, LoaderCircleIcon, Trash2Icon } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { useEffect, type ReactNode } from "react";
 import { AppHeader } from "../../app-header";
 import { request } from "../../shared/client/api-request";
+import {
+  askToDelete,
+  cancelDelete,
+  finishDelete,
+  resetTranscriptStore,
+  selectSession,
+  useTranscriptStore,
+} from "./transcript-store";
 
 /** What the page offers on a session besides export and delete; the app decides what goes here. */
 export type SessionActions = (context: { session: StoredSession; meeting: Meeting }) => ReactNode;
@@ -114,8 +122,10 @@ function Detail({
 
 export function TranscriptsPage({ actions }: { actions?: SessionActions } = {}) {
   const queryClient = useQueryClient();
-  const [selected, setSelected] = useState<number>();
-  const [deleting, setDeleting] = useState<StoredSession>();
+  const selected = useTranscriptStore((state) => state.selectedSessionId);
+  const deleting = useTranscriptStore((state) => state.deleting);
+
+  useEffect(() => resetTranscriptStore, []);
 
   const meetings = useQuery({
     queryKey: ["transcripts", "meetings"],
@@ -128,8 +138,7 @@ export function TranscriptsPage({ actions }: { actions?: SessionActions } = {}) 
     mutationFn: (sessionId: number) =>
       request(`/api/transcripts/session?session=${sessionId}`, { method: "DELETE" }),
     onSuccess: async (_, sessionId) => {
-      if (selected === sessionId) setSelected(undefined);
-      setDeleting(undefined);
+      finishDelete(sessionId);
       await queryClient.invalidateQueries({ queryKey: ["transcripts"] });
     },
   });
@@ -166,7 +175,7 @@ export function TranscriptsPage({ actions }: { actions?: SessionActions } = {}) 
                       <button
                         type="button"
                         aria-current={session.id === selected ? "true" : undefined}
-                        onClick={() => setSelected(session.id)}
+                        onClick={() => selectSession(session.id)}
                         className={cn(
                           "w-full rounded-lg px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground",
                           session.id === selected && "bg-muted text-foreground",
@@ -195,7 +204,7 @@ export function TranscriptsPage({ actions }: { actions?: SessionActions } = {}) 
                     .find((item) => item.id === selected);
                   if (session) {
                     deletion.reset();
-                    setDeleting(session);
+                    askToDelete(session);
                   }
                 }}
               />
@@ -207,7 +216,7 @@ export function TranscriptsPage({ actions }: { actions?: SessionActions } = {}) 
       <AlertDialog
         open={deleting !== undefined}
         onOpenChange={(open) => {
-          if (!open && !deletion.isPending) setDeleting(undefined);
+          if (!open && !deletion.isPending) cancelDelete();
         }}
       >
         <AlertDialogContent>

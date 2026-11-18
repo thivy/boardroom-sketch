@@ -12,12 +12,19 @@ import { cn } from "@app/ui/lib/utils";
 import type { ChatStatus, StoredMeeting } from "@app/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { PlusIcon, SendIcon, SquareIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, type KeyboardEvent } from "react";
 import { AppHeader } from "../../app-header";
 import { request } from "../../shared/client/api-request";
-import { useChat } from "./use-chat";
-
-type TranscriptChoice = { id: number; label: string };
+import {
+  resetChatStore,
+  sendChat,
+  setChatDraft,
+  setChatTranscript,
+  startNewChat,
+  stopChat,
+  useChatStore,
+  type TranscriptChoice,
+} from "./chat-store";
 
 const SUGGESTIONS = [
   "Summarise this meeting in five bullet points.",
@@ -36,10 +43,14 @@ function toChoices(meetings: StoredMeeting[]): TranscriptChoice[] {
 }
 
 export function ChatPage() {
-  const [transcript, setTranscript] = useState<TranscriptChoice | null>(null);
-  const [draft, setDraft] = useState("");
-  const chat = useChat(transcript?.id);
+  const transcript = useChatStore((state) => state.transcript);
+  const draft = useChatStore((state) => state.draft);
+  const messages = useChatStore((state) => state.messages);
+  const busy = useChatStore((state) => state.busy);
   const end = useRef<HTMLDivElement>(null);
+
+  // Leaving the page ends the conversation on the server too.
+  useEffect(() => resetChatStore, []);
 
   const status = useQuery({
     queryKey: ["chat", "status"],
@@ -53,17 +64,17 @@ export function ChatPage() {
     refetchOnMount: "always",
   });
   const choices = useMemo(() => toChoices(meetings.data ?? []), [meetings.data]);
-  const started = chat.messages.length > 0;
+  const started = messages.length > 0;
   const unavailable = status.data?.available === false;
 
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end" });
-  }, [chat.messages]);
+  }, [messages]);
 
   function submit(text: string) {
-    if (!text.trim() || chat.busy || unavailable) return;
-    setDraft("");
-    void chat.send(text);
+    if (!text.trim() || busy || unavailable) return;
+    setChatDraft("");
+    void sendChat(text);
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -81,7 +92,7 @@ export function ChatPage() {
         <Combobox
           items={choices}
           value={transcript}
-          onValueChange={(item) => setTranscript(item)}
+          onValueChange={setChatTranscript}
           itemToStringLabel={(item: TranscriptChoice) => item.label}
           isItemEqualToValue={(a: TranscriptChoice, b: TranscriptChoice) => a.id === b.id}
           disabled={started}
@@ -103,7 +114,7 @@ export function ChatPage() {
             </ComboboxList>
           </ComboboxContent>
         </Combobox>
-        <Button variant="outline" disabled={!started} onClick={chat.reset}>
+        <Button variant="outline" disabled={!started} onClick={startNewChat}>
           <PlusIcon />
           New chat
         </Button>
@@ -138,7 +149,7 @@ export function ChatPage() {
           </div>
         ) : (
           <ul className="mx-auto grid max-w-3xl gap-4">
-            {chat.messages.map(({ id, role, text, failed }) => (
+            {messages.map(({ id, role, text, failed }) => (
               <li key={id} className={cn("flex", role === "user" && "justify-end")}>
                 <div
                   className={cn(
@@ -169,11 +180,11 @@ export function ChatPage() {
             rows={1}
             value={draft}
             disabled={unavailable}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={(event) => setChatDraft(event.target.value)}
             onKeyDown={onKeyDown}
           />
-          {chat.busy ? (
-            <Button variant="secondary" size="icon" aria-label="Stop" onClick={chat.stop}>
+          {busy ? (
+            <Button variant="secondary" size="icon" aria-label="Stop" onClick={stopChat}>
               <SquareIcon />
             </Button>
           ) : (
