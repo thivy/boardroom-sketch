@@ -1,22 +1,68 @@
 name: Desktop app
 
-# Builds the Tauri app on each OS. Every run uploads the installers as workflow artifacts;
-# pushing a tag like v0.1.0 also publishes them to a GitHub Release.
+# Builds the Tauri app on each OS and, when asked, releases it.
+#
+# - Run workflow with bump "none" (the default): builds the installers from the chosen branch and
+#   uploads them as workflow artifacts. Nothing is tagged or published.
+# - Run workflow with bump patch, minor or major: works out the next v*.*.* tag, builds, and only once
+#   every build has passed creates that tag on the built commit and publishes the GitHub Release.
+#   A failed build therefore leaves no tag behind and uses up no version number.
+# - Pushing a tag like v0.1.0 by hand also builds and publishes a release for that tag.
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      bump:
+        description: Release the next version (patch, minor, major), or "none" to only build installers
+        type: choice
+        options: [none, patch, minor, major]
+        default: none
 
+# Releases run one at a time and are never cancelled half way. Plain builds of the same branch replace
+# each other.
 concurrency:
-  group: desktop-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.event_name == 'workflow_dispatch' && (inputs.bump || 'none') == 'none' && format('desktop-{0}', github.ref) || 'desktop-release' }}
+  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' && (inputs.bump || 'none') == 'none' }}
 
 permissions:
   contents: read
 
 jobs:
+  version:
+    name: Work out the version
+    runs-on: ubuntu-latest
+    outputs:
+      # The tag to release, or empty for a build that is not a release.
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # every tag, to find the latest
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Work out the tag
+        id: tag
+        env:
+          EVENT: ${{ github.event_name }}
+          BUMP: ${{ inputs.bump }}
+        run: |
+          if [ "$EVENT" = "push" ]; then
+            tag="$GITHUB_REF_NAME"
+          elif [ -n "$BUMP" ] && [ "$BUMP" != "none" ]; then
+            tag="$(git tag | node .github/scripts/next-tag.mjs "$BUMP")"
+          else
+            tag=""
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Releasing: ${tag:-nothing, only building installers}" >> "$GITHUB_STEP_SUMMARY"
+
   build:
     name: Build (${{ matrix.name }})
+    needs: version
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -46,14 +92,16 @@ jobs:
 
       # The updater compares this version with the installed one, so a release must carry its tag's version.
       - name: Use the tag as the app version
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: needs.version.outputs.tag != ''
         shell: bash
+        env:
+          TAG: ${{ needs.version.outputs.tag }}
         run: |
           node -e "
             const fs = require('fs');
             const file = 'apps/desktop/src-tauri/tauri.conf.json';
             const config = JSON.parse(fs.readFileSync(file, 'utf8'));
-            config.version = process.env.GITHUB_REF_NAME.replace(/^v/, '');
+            config.version = process.env.TAG.replace(/^v/, '');
             fs.writeFileSync(file, JSON.stringify(config, null, 2));
           "
 
@@ -79,11 +127,11 @@ jobs:
 
   release:
     name: Publish release
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [version, build]
+    if: needs.version.outputs.tag != ''
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write # create the tag and the release
     steps:
       - uses: actions/checkout@v7
 
@@ -94,10 +142,17 @@ jobs:
 
       # Names without spaces, and latest.json: the file the installed app checks for a newer version.
       - name: Write the updater manifest
-        run: node .github/scripts/updater-manifest.mjs installers "${{ github.ref_name }}" "${{ github.repository }}"
+        run: node .github/scripts/updater-manifest.mjs installers "${{ needs.version.outputs.tag }}" "${{ github.repository }}"
 
+      # Creates the tag on the commit that was built when it does not exist yet. (A tag made with
+      # GITHUB_TOKEN does not start another run of this workflow.)
       - uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           files: |
             installers/**/*
           generate_release_notes: true
+
+      - name: Summary
+        run: echo "Released ${{ needs.version.outputs.tag }}." >> "$GITHUB_STEP_SUMMARY"

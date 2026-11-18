@@ -71,10 +71,11 @@ bun run desktop:release   # also signs the update packages; needs TAURI_SIGNING_
 
 ### Download a build from GitHub
 
-The `Desktop app` workflow (`.github/workflows/desktop.yml`) builds the installers for Windows (`.msi`, `.exe`) and macOS (`.dmg`).
+The `Desktop app` workflow (`.github/workflows/desktop.yml`) builds the installers for Windows (`.msi`, `.exe`) and macOS (`.dmg`). Actions → _Desktop app_ → _Run workflow_ has one choice, **bump**:
 
-- **Any commit:** Actions → _Desktop app_ → _Run workflow_, then download the installers from the run's **Artifacts** (kept for 30 days).
-- **A release:** push a version tag and the installers are attached to a GitHub Release with generated notes:
+- **`none` (the default): just build.** Download the installers from the run's **Artifacts** (kept for 30 days). Nothing is tagged or published.
+- **`patch`, `minor` or `major`: release.** It finds the latest `vX.Y.Z` tag (the first release is `v0.1.0`) and works out the next one, builds on Windows and macOS, and only when both builds pass creates that tag on the built commit and attaches the installers to a GitHub Release with generated notes. A failed build leaves no tag, so the version number is not used up. Run it on `main`.
+- **Pushing a tag by hand** also builds and publishes a release for it:
 
   ```bash
   git tag v0.1.0 && git push origin v0.1.0
@@ -91,7 +92,7 @@ How it fits together:
 - Updates only reach apps built with the public key and an updater-enabled version, so the first release with this feature has to be installed by hand; later tags update it.
 - The window loads the app from `127.0.0.1`, so `capabilities/default.json` lets that origin (only) use the updater and restart. The banner is `packages/features/src/updates`.
 
-Release steps: run the **Release** workflow (Actions → _Release_ → _Run workflow_, on `main`) and choose `patch`, `minor` or `major`. It finds the latest `vX.Y.Z` tag (the first release is `v0.1.0`), tags the current commit with the next one and starts the **Desktop app** workflow on it, which builds and publishes the release. Pushing a tag by hand (`git tag v0.2.0 && git push origin v0.2.0`) works too.
+Release steps: run the **Desktop app** workflow (Actions → _Desktop app_ → _Run workflow_, on `main`) and choose `patch`, `minor` or `major` as the bump. See [Download a build from GitHub](#download-a-build-from-github) for what it does.
 
 The builds are not code-signed, so Windows SmartScreen and macOS Gatekeeper warn on first run. The installer version comes from `apps/desktop/src-tauri/tauri.conf.json`, not the tag.
 
