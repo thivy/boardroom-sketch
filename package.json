@@ -13,10 +13,10 @@
     "dev": "bun run --cwd apps/web dev",
     "build": "bun run --cwd apps/web build",
     "start": "bun run --cwd apps/web start",
-    "lint": "oxlint",
-    "lint:fix": "oxlint --fix",
-    "fmt": "oxfmt",
-    "fmt:check": "oxfmt --check",
+    "lint": "bun run --cwd packages/tooling lint",
+    "lint:fix": "bun run --cwd packages/tooling lint:fix",
+    "fmt": "bun run --cwd packages/tooling fmt",
+    "fmt:check": "bun run --cwd packages/tooling fmt:check",
     "typecheck": "bun run --filter '*' typecheck",
     "test": "bun test",
     "desktop:dev": "bun run --cwd apps/desktop dev",
@@ -28,12 +28,11 @@
     "@github/copilot-sdk": "^1.0.32"
   },
   "devDependencies": {
+    "@app/tooling": "workspace:*",
     "@types/bun": "^1",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "oxfmt": "^0.75.0",
-    "oxlint": "^1.90.0",
     "typescript": "^5"
   },
   "engines": {
