@@ -5,11 +5,13 @@
   "scripts": {
     "lint": "cd ../.. && oxlint",
     "lint:fix": "cd ../.. && oxlint --fix",
+    "lint:types": "cd ../.. && oxlint --type-aware --type-check",
     "fmt": "cd ../.. && oxfmt",
     "fmt:check": "cd ../.. && oxfmt --check"
   },
   "devDependencies": {
     "oxfmt": "0.78.0",
-    "oxlint": "1.93.0"
+    "oxlint": "1.93.0",
+    "tsrs": "^0.24.0-ts7.1.0-beta"
   }
 }

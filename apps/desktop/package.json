@@ -9,7 +9,7 @@
     "dev:built": "bun run --cwd ../web build && bun scripts/prepare-sidecar.mjs && tauri dev",
     "build": "bun run --cwd ../web build && bun scripts/prepare-sidecar.mjs && tauri build --config src-tauri/tauri.local.conf.json",
     "tauri": "tauri",
-    "typecheck": "bun build --no-bundle --target=bun scripts/prepare-sidecar.mjs --outdir node_modules/.cache/prepare-sidecar",
+    "typecheck": "bun -e \"await Bun.build({ entrypoints: ['scripts/prepare-sidecar.mjs'], target: 'bun', throw: true })\"",
     "build:release": "bun run --cwd ../web build && bun scripts/prepare-sidecar.mjs && tauri build"
   },
   "devDependencies": {

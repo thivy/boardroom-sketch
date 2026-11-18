@@ -15,6 +15,7 @@
     "start": "bun run --cwd apps/web start",
     "lint": "bun run --cwd packages/tooling lint",
     "lint:fix": "bun run --cwd packages/tooling lint:fix",
+    "lint:types": "bun run --cwd packages/tooling lint:types",
     "fmt": "bun run --cwd packages/tooling fmt",
     "fmt:check": "bun run --cwd packages/tooling fmt:check",
     "typecheck": "bun run --filter '*' typecheck",
