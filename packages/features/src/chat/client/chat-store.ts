@@ -14,13 +14,17 @@ type Frame = { event: string; data: string };
 const EVENT_LINE = /^event: (.*)$/m;
 const DATA_LINE = /^data: (.*)$/m;
 
-const chat = createStore({
-  messages: [] as ChatMessage[],
-  busy: false,
-  draft: "",
-  /** The saved transcript the conversation is about; read when the conversation starts. */
-  transcript: null as TranscriptChoice | null,
-});
+const chat = createStore(
+  {
+    messages: [] as ChatMessage[],
+    busy: false,
+    draft: "",
+    /** The saved transcript the conversation is about; read when the conversation starts. */
+    transcript: null as TranscriptChoice | null,
+  },
+  // The page was left: end the conversation, on the server too, and start blank.
+  { onUnused: () => resetChatStore() },
+);
 
 export const useChatStore = chat.useStore;
 

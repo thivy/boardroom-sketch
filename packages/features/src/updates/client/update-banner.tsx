@@ -1,23 +1,13 @@
 import { Button } from "@app/ui/components/button";
 import { DownloadIcon, LoaderCircleIcon } from "lucide-react";
-import { useEffect } from "react";
-import { canUpdate, checkForUpdate, installUpdate, useUpdateStore } from "./update-store";
-
-const CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
+import { installUpdate, useUpdateStore } from "./update-store";
 
 /**
- * A card in the corner that appears when a newer version of the desktop app has been released. It
- * checks on start and every few hours; inside a normal browser there is no updater, so nothing shows.
+ * A card in the corner that appears when a newer version of the desktop app has been released. The
+ * store checks on start and every few hours; inside a normal browser there is no updater, so nothing shows.
  */
 export function UpdateBanner() {
   const state = useUpdateStore((store) => store.state);
-
-  useEffect(() => {
-    if (!canUpdate()) return;
-    void checkForUpdate();
-    const timer = setInterval(checkForUpdate, CHECK_EVERY_MS);
-    return () => clearInterval(timer);
-  }, []);
 
   if (state.status === "none") return null;
 

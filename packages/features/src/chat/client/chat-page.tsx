@@ -1,15 +1,10 @@
-import { useEffect } from "react";
 import { AppHeader } from "../../app-header";
 import { ChatComposer } from "./chat-composer";
 import { ChatMessages } from "./chat-messages";
-import { resetChatStore } from "./chat-store";
 import { ChatToolbar } from "./chat-toolbar";
 import { useChatStatus } from "./use-chat-status";
 
 export function ChatPage() {
-  // Leaving the page ends the conversation on the server too.
-  useEffect(() => resetChatStore, []);
-
   const status = useChatStatus();
   const unavailable = status.data?.available === false;
 

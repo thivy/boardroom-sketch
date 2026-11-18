@@ -1,13 +1,7 @@
-import { useEffect, useRef } from "react";
 import { useCaptionStore } from "./caption-store";
 
 export function CaptionList() {
   const captions = useCaptionStore((state) => state.captions);
-  const end = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    end.current?.scrollIntoView({ block: "end" });
-  }, [captions]);
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -23,7 +17,8 @@ export function CaptionList() {
           ))}
         </ul>
       )}
-      <div ref={end} />
+      {/* A new function on every render, so React calls it again and the list follows each caption. */}
+      <div ref={(end) => end?.scrollIntoView({ block: "end" })} />
     </div>
   );
 }

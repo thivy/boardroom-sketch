@@ -1,6 +1,5 @@
 import { Button } from "@app/ui/components/button";
 import { cn } from "@app/ui/lib/utils";
-import { useEffect, useRef } from "react";
 import { submitChat, useChatStore } from "./chat-store";
 import { useChatStatus } from "./use-chat-status";
 
@@ -17,11 +16,6 @@ export function ChatMessages() {
   const status = useChatStatus();
   const unavailable = status.data?.available === false;
   const started = messages.length > 0;
-  const end = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    end.current?.scrollIntoView({ block: "end" });
-  }, [messages]);
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -64,7 +58,8 @@ export function ChatMessages() {
           ))}
         </ul>
       )}
-      <div ref={end} />
+      {/* A new function on every render, so React calls it again and the list follows each message. */}
+      <div ref={(end) => end?.scrollIntoView({ block: "end" })} />
     </div>
   );
 }

@@ -2,22 +2,9 @@ import { EDGE_RULES, type GraphEdge, type MeetingGraph, type NodeType } from "@a
 import { Button } from "@app/ui/components/button";
 import { cn } from "@app/ui/lib/utils";
 import { CheckIcon, MaximizeIcon, MinusIcon, PlusIcon } from "lucide-react";
-import {
-  type PointerEvent,
-  type ReactNode,
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-} from "react";
-import {
-  resetGraphCanvasStore,
-  setFollowing,
-  setHoveredNode,
-  useGraphCanvasStore,
-} from "./graph-canvas-store";
-import { ForceLayout } from "./force-layout";
+import { type ReactNode, useCallback, useId, useMemo } from "react";
+import { createCanvasController } from "./graph-canvas-controller";
+import { setHoveredNode, useGraphCanvasStore } from "./graph-canvas-store";
 import { useGraphViewStore } from "./graph-view-store";
 import {
   FAMILY_VISUALS,
@@ -29,23 +16,6 @@ import {
   toneOf,
 } from "./visuals";
 
-type View = { x: number; y: number; k: number };
-type Drag =
-  | { kind: "pan"; startX: number; startY: number; view: View; moved: boolean }
-  | {
-      kind: "node";
-      id: string;
-      startX: number;
-      startY: number;
-      offsetX: number;
-      offsetY: number;
-      moved: boolean;
-    };
-
-const MIN_ZOOM = 0.2;
-const MAX_ZOOM = 2.5;
-const LOW_ZOOM = 0.55;
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const truncate = (text: string, max: number) =>
   text.length > max ? `${text.slice(0, max - 1)}…` : text;
 
@@ -70,20 +40,10 @@ export function GraphCanvas({
 }: GraphCanvasProps) {
   const query = useGraphViewStore((state) => state.query);
   const uid = useId().replaceAll(":", "");
-  const svgRef = useRef<SVGSVGElement>(null);
-  const worldRef = useRef<SVGGElement>(null);
-  const patternRef = useRef<SVGPatternElement>(null);
-  const nodeEls = useRef(new Map<string, SVGGElement>());
-  const edgeEls = useRef(new Map<string, SVGGElement>());
-  const view = useRef<View>({ x: 0, y: 0, k: 1 });
-  const dirty = useRef(true);
-  const autoFit = useRef(true);
-  const drag = useRef<Drag | null>(null);
-  const layout = useMemo(() => new ForceLayout(), []);
+  const controller = useMemo(() => createCanvasController(), []);
+  const attach = useCallback((svg: SVGSVGElement) => controller.attach(svg), [controller]);
   const following = useGraphCanvasStore((state) => state.following);
   const hover = useGraphCanvasStore((state) => state.hoveredNodeId);
-
-  useEffect(() => resetGraphCanvasStore, []);
 
   const model = useMemo(() => {
     const nodes = graph.nodes.filter((node) => !hiddenTypes.has(node.type));
@@ -143,214 +103,11 @@ export function GraphCanvas({
     };
   }, [graph, hiddenTypes]);
 
-  const modelRef = useRef(model);
+  controller.sync(model);
 
-  useLayoutEffect(() => {
-    modelRef.current = model;
-    layout.sync(
-      model.nodes.map(({ node, radius }) => ({
-        id: node.id,
-        radius,
-        width: Math.max(radius * 2, Math.min(node.title.length, 26) * 6.4),
-      })),
-      model.links,
-    );
-    dirty.current = true;
-  }, [layout, model]);
-
-  useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
-
-    const target = (): View => {
-      const { width, height } = svg.getBoundingClientRect();
-      const bounds = layout.bounds();
-      if (!bounds) return { x: width / 2, y: height / 2, k: 1 };
-      const pad = 72;
-      const k = clamp(
-        Math.min(
-          (width - pad * 2) / Math.max(bounds.maxX - bounds.minX, 1),
-          (height - pad * 2) / Math.max(bounds.maxY - bounds.minY, 1),
-        ),
-        MIN_ZOOM,
-        1.25,
-      );
-      return {
-        k,
-        x: width / 2 - ((bounds.minX + bounds.maxX) / 2) * k,
-        y: height / 2 - ((bounds.minY + bounds.maxY) / 2) * k,
-      };
-    };
-
-    const paint = () => {
-      for (const { node } of modelRef.current.nodes) {
-        const position = layout.nodes.get(node.id);
-        nodeEls.current
-          .get(node.id)
-          ?.setAttribute(
-            "transform",
-            `translate(${position?.x.toFixed(1)} ${position?.y.toFixed(1)})`,
-          );
-      }
-
-      for (const edge of modelRef.current.edges) {
-        const group = edgeEls.current.get(edge.id);
-        const from = layout.nodes.get(edge.srcId);
-        const to = layout.nodes.get(edge.dstId);
-        if (!group || !from || !to) continue;
-
-        const dx = to.x - from.x;
-        const dy = to.y - from.y;
-        const length = Math.hypot(dx, dy) || 1;
-        const bend = (modelRef.current.curves.get(edge.id) ?? 0) * length;
-        const cx = (from.x + to.x) / 2 - (dy / length) * bend;
-        const cy = (from.y + to.y) / 2 + (dx / length) * bend;
-        const startLength = Math.hypot(cx - from.x, cy - from.y) || 1;
-        const endLength = Math.hypot(cx - to.x, cy - to.y) || 1;
-        const gap = to.radius + (EDGE_RULES[edge.type].symmetric ? 3 : 8);
-        const sx = from.x + ((cx - from.x) / startLength) * (from.radius + 3);
-        const sy = from.y + ((cy - from.y) / startLength) * (from.radius + 3);
-        const ex = to.x + ((cx - to.x) / endLength) * gap;
-        const ey = to.y + ((cy - to.y) / endLength) * gap;
-        const path = `M${sx.toFixed(1)} ${sy.toFixed(1)} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`;
-
-        const [line, hit, label] = Array.from(group.children);
-        line?.setAttribute("d", path);
-        hit?.setAttribute("d", path);
-        label?.setAttribute("x", ((sx + 2 * cx + ex) / 4).toFixed(1));
-        label?.setAttribute("y", ((sy + 2 * cy + ey) / 4).toFixed(1));
-      }
-
-      const { x, y, k } = view.current;
-      worldRef.current?.setAttribute("transform", `translate(${x} ${y}) scale(${k})`);
-      patternRef.current?.setAttribute("patternTransform", `translate(${x} ${y}) scale(${k})`);
-      svg.dataset.zoom = k < LOW_ZOOM ? "low" : "high";
-    };
-
-    let frame = 0;
-    const step = () => {
-      layout.tick();
-      let animating = false;
-      if (autoFit.current) {
-        const goal = target();
-        const current = view.current;
-        current.x += (goal.x - current.x) * 0.12;
-        current.y += (goal.y - current.y) * 0.12;
-        current.k += (goal.k - current.k) * 0.12;
-        animating =
-          Math.abs(goal.x - current.x) > 0.5 ||
-          Math.abs(goal.y - current.y) > 0.5 ||
-          Math.abs(goal.k - current.k) > 0.002;
-      }
-      if (!layout.settled || animating || dirty.current) paint();
-      dirty.current = false;
-      frame = requestAnimationFrame(step);
-    };
-    paint();
-    frame = requestAnimationFrame(step);
-
-    const resize = new ResizeObserver(() => (dirty.current = true));
-    resize.observe(svg);
-
-    const wheel = (event: WheelEvent) => {
-      event.preventDefault();
-      const rect = svg.getBoundingClientRect();
-      const current = view.current;
-      const k = clamp(current.k * Math.exp(-event.deltaY * 0.0015), MIN_ZOOM, MAX_ZOOM);
-      const px = event.clientX - rect.left;
-      const py = event.clientY - rect.top;
-      current.x = px - ((px - current.x) / current.k) * k;
-      current.y = py - ((py - current.y) / current.k) * k;
-      current.k = k;
-      autoFit.current = false;
-      setFollowing(false);
-      dirty.current = true;
-    };
-    svg.addEventListener("wheel", wheel, { passive: false });
-
-    return () => {
-      cancelAnimationFrame(frame);
-      resize.disconnect();
-      svg.removeEventListener("wheel", wheel);
-    };
-  }, [layout]);
-
-  const world = (event: PointerEvent) => {
-    const rect = svgRef.current!.getBoundingClientRect();
-    const { x, y, k } = view.current;
-    return { x: (event.clientX - rect.left - x) / k, y: (event.clientY - rect.top - y) / k };
-  };
-
-  const startPan = (event: PointerEvent) => {
-    svgRef.current?.setPointerCapture(event.pointerId);
-    drag.current = {
-      kind: "pan",
-      startX: event.clientX,
-      startY: event.clientY,
-      view: { ...view.current },
-      moved: false,
-    };
-  };
-
-  const startNodeDrag = (event: PointerEvent, id: string) => {
-    event.stopPropagation();
-    svgRef.current?.setPointerCapture(event.pointerId);
-    const point = world(event);
-    const node = layout.nodes.get(id);
-    drag.current = {
-      kind: "node",
-      id,
-      startX: event.clientX,
-      startY: event.clientY,
-      offsetX: (node?.x ?? point.x) - point.x,
-      offsetY: (node?.y ?? point.y) - point.y,
-      moved: false,
-    };
-  };
-
-  const onMove = (event: PointerEvent) => {
-    const current = drag.current;
-    if (!current) return;
-    const travelled = Math.hypot(event.clientX - current.startX, event.clientY - current.startY);
-    if (travelled > 4) current.moved = true;
-    if (!current.moved) return;
-
-    if (current.kind === "pan") {
-      view.current.x = current.view.x + event.clientX - current.startX;
-      view.current.y = current.view.y + event.clientY - current.startY;
-      autoFit.current = false;
-      setFollowing(false);
-      dirty.current = true;
-    } else {
-      const point = world(event);
-      layout.pin(current.id, point.x + current.offsetX, point.y + current.offsetY);
-    }
-  };
-
-  const onUp = () => {
-    const current = drag.current;
-    drag.current = null;
-    if (!current) return;
-    if (current.kind === "node") {
-      layout.unpin(current.id);
-      if (!current.moved) onSelect(current.id);
-    } else if (!current.moved) {
-      onSelect(undefined);
-    }
-  };
-
-  const zoomBy = (factor: number) => {
-    const svg = svgRef.current;
-    if (!svg) return;
-    const { width, height } = svg.getBoundingClientRect();
-    const current = view.current;
-    const k = clamp(current.k * factor, MIN_ZOOM, MAX_ZOOM);
-    current.x = width / 2 - ((width / 2 - current.x) / current.k) * k;
-    current.y = height / 2 - ((height / 2 - current.y) / current.k) * k;
-    current.k = k;
-    autoFit.current = false;
-    setFollowing(false);
-    dirty.current = true;
+  const release = () => {
+    const clicked = controller.release();
+    if (clicked) onSelect(clicked.select);
   };
 
   const active = hover ?? selectedId;
@@ -374,17 +131,17 @@ export function GraphCanvas({
   return (
     <div className="relative h-full min-h-0 overflow-hidden rounded-[inherit]">
       <svg
-        ref={svgRef}
+        ref={attach}
         data-zoom="high"
         className="group/graph size-full touch-none cursor-grab select-none active:cursor-grabbing"
-        onPointerDown={startPan}
-        onPointerMove={onMove}
-        onPointerUp={onUp}
-        onPointerCancel={onUp}
+        onPointerDown={controller.startPan}
+        onPointerMove={controller.move}
+        onPointerUp={release}
+        onPointerCancel={release}
       >
         <defs>
           <pattern
-            ref={patternRef}
+            data-pattern
             id={`${uid}-dots`}
             width="28"
             height="28"
@@ -410,7 +167,7 @@ export function GraphCanvas({
         </defs>
         <rect width="100%" height="100%" fill={`url(#${uid}-dots)`} />
 
-        <g ref={worldRef}>
+        <g data-world>
           <g>
             {model.edges.map((edge) => {
               const { color, dash } = FAMILY_VISUALS[edge.family];
@@ -421,10 +178,7 @@ export function GraphCanvas({
               return (
                 <g
                   key={edge.id}
-                  ref={(element) => {
-                    if (element) edgeEls.current.set(edge.id, element);
-                    else edgeEls.current.delete(edge.id);
-                  }}
+                  ref={(element) => controller.registerEdge(edge.id, element)}
                   className={cn(
                     "transition-opacity duration-200",
                     dimmed ? "opacity-10" : "opacity-100",
@@ -477,12 +231,12 @@ export function GraphCanvas({
               return (
                 <g
                   key={node.id}
-                  ref={(element) => {
-                    if (element) nodeEls.current.set(node.id, element);
-                    else nodeEls.current.delete(node.id);
-                  }}
+                  ref={(element) => controller.registerNode(node.id, element)}
                   className="cursor-pointer"
-                  onPointerDown={(event) => startNodeDrag(event, node.id)}
+                  onPointerDown={(event) => {
+                    event.stopPropagation();
+                    controller.startNodeDrag(event, node.id);
+                  }}
                   onPointerEnter={() => setHoveredNode(node.id)}
                   onPointerLeave={() => setHoveredNode(undefined)}
                 >
@@ -599,21 +353,27 @@ export function GraphCanvas({
       </div>
 
       <div className="absolute right-3 bottom-3 flex items-center gap-1 rounded-xl border bg-card/80 p-1 backdrop-blur">
-        <Button variant="ghost" size="icon-sm" aria-label="Zoom out" onClick={() => zoomBy(0.8)}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Zoom out"
+          onClick={() => controller.zoomBy(0.8)}
+        >
           <MinusIcon />
         </Button>
-        <Button variant="ghost" size="icon-sm" aria-label="Zoom in" onClick={() => zoomBy(1.25)}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Zoom in"
+          onClick={() => controller.zoomBy(1.25)}
+        >
           <PlusIcon />
         </Button>
         <Button
           variant={following ? "secondary" : "ghost"}
           size="sm"
           aria-pressed={following}
-          onClick={() => {
-            autoFit.current = true;
-            setFollowing(true);
-            dirty.current = true;
-          }}
+          onClick={controller.fit}
         >
           {following ? <CheckIcon /> : <MaximizeIcon />}
           Fit

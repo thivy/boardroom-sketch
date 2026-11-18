@@ -1,20 +1,17 @@
 import { Empty, EmptyDescription, EmptyHeader } from "@app/ui/components/empty";
 import type { StoredMeeting } from "@app/contracts";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
 import { AppHeader } from "../../app-header";
 import { request } from "../../shared/client/api-request";
 import { DeleteTranscriptDialog } from "./delete-transcript-dialog";
 import { SessionDetail, type SessionActions } from "./session-detail";
 import { SessionList } from "./session-list";
-import { askToDelete, resetTranscriptStore, useTranscriptStore } from "./transcript-store";
+import { askToDelete, useTranscriptStore } from "./transcript-store";
 
 export type { SessionActions } from "./session-detail";
 
 export function TranscriptsPage({ actions }: { actions?: SessionActions } = {}) {
   const selected = useTranscriptStore((state) => state.selectedSessionId);
-
-  useEffect(() => resetTranscriptStore, []);
 
   const meetings = useQuery({
     queryKey: ["transcripts", "meetings"],

@@ -11,7 +11,6 @@ import { Button, buttonVariants } from "@app/ui/components/button";
 import type { GraphBuildStatus, StoredSession } from "@app/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LoaderCircleIcon, NetworkIcon, SquareIcon } from "lucide-react";
-import { useEffect } from "react";
 import { request, jsonRequest } from "../../shared/client/api-request";
 import { askToReplaceGraph, closeReplaceGraph, useGraphBuildStore } from "./graph-build-store";
 
@@ -30,8 +29,6 @@ export function BuildGraphButton({
   const queryClient = useQueryClient();
   const confirming = useGraphBuildStore((state) => state.confirmingSessionId === session.id);
   const key = ["graph", "build", session.id];
-
-  useEffect(() => closeReplaceGraph, []);
 
   const status = useQuery({
     queryKey: key,

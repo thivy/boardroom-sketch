@@ -11,8 +11,7 @@ import type { Meeting } from "@app/contracts";
 import { jsonRequest, request } from "../../shared/client/api-request";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { LoaderCircleIcon, PowerIcon, RefreshCwIcon, SquareIcon } from "lucide-react";
-import { useEffect } from "react";
-import { followRecording, markResumed, selectMeeting, useCaptionStore } from "./caption-store";
+import { followRecording, selectMeeting, useCaptionStore } from "./caption-store";
 import { useRunningRecordings } from "./use-running-recordings";
 
 const fetchMeetings = () => request<Meeting[]>("/api/captions/meetings");
@@ -33,7 +32,6 @@ const restartTeams = () => request("/api/captions/prepare", jsonRequest("POST", 
 export function RecordingControls({ options }: { options?: React.ReactNode }) {
   const selected = useCaptionStore((state) => state.selectedMeetingId);
   const recordingId = useCaptionStore((state) => state.recordingId);
-  const resumed = useCaptionStore((state) => state.resumed);
   const connected = useCaptionStore(
     (state) => state.state === "connecting" || state.state === "live",
   );
@@ -70,14 +68,7 @@ export function RecordingControls({ options }: { options?: React.ReactNode }) {
     mutationFn: stopRecording,
   });
 
-  const running = useRunningRecordings();
-  useEffect(() => {
-    const active = running.data?.[0];
-    if (!active || resumed) return;
-    markResumed();
-    selectMeeting(active.meetingId);
-    followRecording(active.meetingId);
-  }, [running.data, resumed]);
+  useRunningRecordings();
 
   return (
     <div className="grid gap-3 border-b p-4">

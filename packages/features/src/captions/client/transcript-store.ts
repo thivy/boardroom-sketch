@@ -22,5 +22,3 @@ export const finishDelete = (sessionId: number) =>
     deleting: undefined,
     selectedSessionId: state.selectedSessionId === sessionId ? undefined : state.selectedSessionId,
   }));
-
-export const resetTranscriptStore = transcripts.reset;

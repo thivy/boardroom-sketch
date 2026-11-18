@@ -94,8 +94,15 @@
             "paths": [
               {
                 "name": "react",
-                "importNames": ["useState", "useReducer", "default"],
-                "message": "Client state lives in a Zustand store (see createStore in packages/features/src/shared/client). Do not use useState or useReducer."
+                "importNames": [
+                  "useState",
+                  "useReducer",
+                  "useEffect",
+                  "useLayoutEffect",
+                  "useInsertionEffect",
+                  "default"
+                ],
+                "message": "Client state lives in a Zustand store (see createStore in packages/features/src/shared/client). Do not use useState, useReducer or effects: put timers, streams and resets in the store (whileUsed / onUnused), fetch side effects in query functions, and DOM work in ref callbacks."
               }
             ]
           }
@@ -176,8 +183,15 @@
             "paths": [
               {
                 "name": "react",
-                "importNames": ["useState", "useReducer", "default"],
-                "message": "Client state lives in a Zustand store (see createStore in packages/features/src/shared/client). Do not use useState or useReducer."
+                "importNames": [
+                  "useState",
+                  "useReducer",
+                  "useEffect",
+                  "useLayoutEffect",
+                  "useInsertionEffect",
+                  "default"
+                ],
+                "message": "Client state lives in a Zustand store (see createStore in packages/features/src/shared/client). Do not use useState, useReducer or effects: put timers, streams and resets in the store (whileUsed / onUnused), fetch side effects in query functions, and DOM work in ref callbacks."
               }
             ],
             "patterns": [
@@ -199,8 +213,15 @@
             "paths": [
               {
                 "name": "react",
-                "importNames": ["useState", "useReducer", "default"],
-                "message": "Client state lives in a Zustand store (see createStore in packages/features/src/shared/client). Do not use useState or useReducer."
+                "importNames": [
+                  "useState",
+                  "useReducer",
+                  "useEffect",
+                  "useLayoutEffect",
+                  "useInsertionEffect",
+                  "default"
+                ],
+                "message": "Client state lives in a Zustand store (see createStore in packages/features/src/shared/client). Do not use useState, useReducer or effects: put timers, streams and resets in the store (whileUsed / onUnused), fetch side effects in query functions, and DOM work in ref callbacks."
               }
             ],
             "patterns": [

@@ -1,7 +1,7 @@
 import { Button } from "@app/ui/components/button";
 import type { Caption } from "@app/contracts";
 import { CopyIcon, DownloadIcon } from "lucide-react";
-import { useCaptionStore, type StreamState } from "./caption-store";
+import { getCaptions, useCaptionStore, type StreamState } from "./caption-store";
 import { useRunningRecordings } from "./use-running-recordings";
 
 const STATE_LABEL: Record<StreamState, string> = {
@@ -22,7 +22,7 @@ function toTranscript(captions: Caption[]) {
 }
 
 // Read on click so the bar does not re-render for every incoming caption.
-const currentTranscript = () => toTranscript(useCaptionStore.getState().captions);
+const currentTranscript = () => toTranscript(getCaptions());
 
 export function CaptionStatusBar() {
   const recordingId = useCaptionStore((state) => state.recordingId);

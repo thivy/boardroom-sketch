@@ -1,27 +1,39 @@
-import type { Caption, CaptionStatus } from "@app/contracts";
+import type { ActiveRecording, Caption, CaptionStatus } from "@app/contracts";
 import { createStore } from "../../shared/client/create-store";
 
 export type StreamState = "idle" | "connecting" | "live" | "closed" | "error";
 
-const captions = createStore({
-  state: "idle" as StreamState,
-  captions: [] as Caption[],
-  captionsVisible: undefined as boolean | undefined,
-  /** The meeting chosen in the picker; undefined until the user picks one. */
-  selectedMeetingId: undefined as string | undefined,
-  /** The meeting being recorded and followed. */
-  recordingId: undefined as string | undefined,
-  /** Whether a recording already running on the server has been picked up again. */
-  resumed: false,
-});
+const captions = createStore(
+  {
+    state: "idle" as StreamState,
+    captions: [] as Caption[],
+    captionsVisible: undefined as boolean | undefined,
+    /** The meeting chosen in the picker; undefined until the user picks one. */
+    selectedMeetingId: undefined as string | undefined,
+    /** The meeting being recorded and followed. */
+    recordingId: undefined as string | undefined,
+    /** Whether a recording already running on the server has been picked up again. */
+    resumed: false,
+  },
+  // The page was left: stop following (the recording itself keeps running on the server).
+  { onUnused: () => resetCaptionStore() },
+);
 
 export const useCaptionStore = captions.useStore;
 
 let source: EventSource | null = null;
 
+export const getCaptions = () => captions.get().captions;
+
 export const selectMeeting = (selectedMeetingId: string) => captions.set({ selectedMeetingId });
 
-export const markResumed = () => captions.set({ resumed: true });
+/** The first time the page sees a recording already running, it picks it up again and follows it. */
+export function resumeRecording(running: ActiveRecording[]) {
+  const active = running[0];
+  if (!active || captions.get().resumed) return;
+  captions.set({ resumed: true, selectedMeetingId: active.meetingId });
+  followRecording(active.meetingId);
+}
 
 /**
  * Follows a recording that is running on the server. The stream starts with what is already saved,

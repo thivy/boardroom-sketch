@@ -1,20 +1,13 @@
 import { Empty, EmptyDescription, EmptyHeader } from "@app/ui/components/empty";
 import { NetworkIcon } from "lucide-react";
-import { useEffect } from "react";
 import { AppHeader } from "../../app-header";
 import { GraphCanvas } from "./graph-canvas";
 import { BuildStatusBadge, GraphSearch, MeetingMenu } from "./graph-toolbar";
-import {
-  resetGraphViewStore,
-  selectNode,
-  toggleNodeType,
-  useGraphViewStore,
-} from "./graph-view-store";
+import { selectNode, toggleNodeType, useGraphViewStore } from "./graph-view-store";
 import { ActivityFeed } from "./activity-feed";
 import { NodeDetail } from "./node-detail";
 import { Overview } from "./overview";
 import { LiveGraphSwitch } from "./live-graph-switch";
-import { resetGraphActivityStore } from "./graph-activity-store";
 import { useLiveGraph, useMeetings } from "./use-live-graph";
 
 function Placeholder({ title, children }: { title: string; children: React.ReactNode }) {
@@ -38,14 +31,6 @@ export function GraphPage({ meeting: initialMeeting }: { meeting?: string } = {}
   const chosen = useGraphViewStore((state) => state.chosenMeetingId) ?? initialMeeting;
   const selectedId = useGraphViewStore((state) => state.selectedNodeId);
   const hiddenTypes = useGraphViewStore((state) => state.hiddenTypes);
-
-  useEffect(
-    () => () => {
-      resetGraphViewStore();
-      resetGraphActivityStore();
-    },
-    [],
-  );
 
   const meeting = meetings.find((item) => item.id === chosen) ?? meetings[0];
   const { graph, isError, error, isLoading, activity, fresh, changedAt } = useLiveGraph(

@@ -11,5 +11,3 @@ export const useGraphCanvasStore = canvas.useStore;
 export const setFollowing = (following: boolean) => canvas.set({ following });
 
 export const setHoveredNode = (hoveredNodeId: string | undefined) => canvas.set({ hoveredNodeId });
-
-export const resetGraphCanvasStore = canvas.reset;

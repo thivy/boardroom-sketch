@@ -24,5 +24,3 @@ export const toggleNodeType = (type: NodeType) =>
   });
 
 export const setGraphQuery = (query: string) => view.set({ query });
-
-export const resetGraphViewStore = view.reset;

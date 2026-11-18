@@ -1,12 +1,9 @@
 import type { ActiveRecording, GraphOp, MeetingGraph, StoredMeeting } from "@app/contracts";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
-import { diffGraphs } from "./activity";
-import { expireFreshNodes, recordGraphChanges, useGraphActivity } from "./graph-activity-store";
+import { observeGraph, useGraphActivity } from "./graph-activity-store";
 import { request } from "../../shared/client/api-request";
 
 const POLL_MS = 1500;
-const FRESH_MS = 6000;
 
 export type MeetingChoice = { id: string; title: string; live: boolean };
 
@@ -46,35 +43,20 @@ export function useMeetings() {
 export function useLiveGraph(meetingId: string | undefined) {
   const query = useQuery({
     queryKey: ["graph", "meeting", meetingId],
-    queryFn: () => request<MeetingGraph>(`/api/graph?meeting=${encodeURIComponent(meetingId!)}`),
+    queryFn: async () => {
+      const graph = await request<MeetingGraph>(
+        `/api/graph?meeting=${encodeURIComponent(meetingId!)}`,
+      );
+      observeGraph(graph);
+      return graph;
+    },
     enabled: meetingId !== undefined,
     refetchInterval: POLL_MS,
     placeholderData: undefined,
   });
 
-  const previous = useRef<{ meetingId?: string; graph?: MeetingGraph }>({});
   const { activity, fresh, changedAt } = useGraphActivity(meetingId);
-
   const graph = query.data;
-  useEffect(() => {
-    if (!graph || graph.meetingId !== meetingId) return;
-    const last = previous.current;
-    previous.current = { meetingId, graph };
-    // The first poll for a meeting is the baseline, not news.
-    if (!last.graph || last.meetingId !== meetingId || last.graph === graph) return;
-
-    const now = Date.now();
-    const found = diffGraphs(last.graph, graph, now);
-    if (found.length > 0) recordGraphChanges(meetingId, found, now);
-  }, [graph, meetingId]);
-
-  // Fresh marks fade by themselves.
-  const freshCount = fresh.size;
-  useEffect(() => {
-    if (freshCount === 0 || meetingId === undefined) return;
-    const timer = setTimeout(() => expireFreshNodes(meetingId, Date.now() - FRESH_MS), FRESH_MS);
-    return () => clearTimeout(timer);
-  }, [freshCount, changedAt, meetingId]);
 
   return {
     graph: graph?.meetingId === meetingId ? graph : undefined,
