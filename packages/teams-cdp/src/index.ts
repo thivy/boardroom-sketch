@@ -1,6 +1,6 @@
 import type { CaptionSource } from "@app/contracts";
 import { restartTeamsWithDebugging } from "./launch-teams";
-import { listMeetings } from "./list-meetings";
+import { listMeetings, listWindowLabels } from "./list-meetings";
 import { watchMeeting } from "./watch-meeting";
 
 export type TeamsCdpOptions = {
@@ -19,5 +19,6 @@ export function teamsCdp({
     listMeetings: () => listMeetings(port),
     watch: (meetingId, signal) => watchMeeting(port, meetingId, signal),
     prepare: () => restartTeamsWithDebugging(port),
+    listWindows: () => listWindowLabels(port),
   };
 }

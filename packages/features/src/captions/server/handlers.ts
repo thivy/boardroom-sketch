@@ -38,6 +38,15 @@ export function createCaptionHandlers(
       }
     },
 
+    /** `GET`: the windows the source can see, to explain why no meeting was found. */
+    async windows(): Promise<Response> {
+      try {
+        return json((await source.listWindows?.()) ?? []);
+      } catch (error) {
+        return json({ error: message(error, "Could not list windows") }, 502);
+      }
+    },
+
     /** `GET`: the recordings running on the server. */
     recordings(): Response {
       return json(recorder.active());

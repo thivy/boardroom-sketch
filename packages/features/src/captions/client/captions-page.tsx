@@ -36,6 +36,13 @@ async function fetchMeetings(): Promise<Meeting[]> {
   return body as Meeting[];
 }
 
+async function fetchWindows(): Promise<string[]> {
+  const response = await fetch("/api/captions/windows");
+  const body = await response.json();
+  if (!response.ok) throw new Error((body as { error: string }).error);
+  return body as string[];
+}
+
 async function fetchRecordings(): Promise<ActiveRecording[]> {
   const response = await fetch("/api/captions/recordings");
   return (await response.json()) as ActiveRecording[];
@@ -87,6 +94,14 @@ export function CaptionsPage() {
   });
 
   const target = selected ?? targets.data?.[0]?.id;
+  // What Teams exposes, fetched only when no meeting was found, so the user can see why.
+  const noMeetings = targets.data?.length === 0;
+  const windows = useQuery({
+    queryKey: ["captions", "windows", targets.dataUpdatedAt],
+    queryFn: fetchWindows,
+    enabled: noMeetings,
+    retry: false,
+  });
   const restart = useMutation({
     mutationKey: ["captions", "restart-teams"],
     mutationFn: restartTeams,
@@ -225,10 +240,31 @@ export function CaptionsPage() {
             {targets.error.message}
           </p>
         )}
-        {targets.data?.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            Chrome is reachable, but no Teams tab is open.
-          </p>
+        {noMeetings && (
+          <div className="grid gap-1 text-sm text-muted-foreground">
+            <p>
+              Teams is connected, but no meeting was found. Join the meeting in its own window, turn
+              on live captions, then choose Find meetings again.
+            </p>
+            {windows.data && (
+              <details>
+                <summary className="cursor-pointer text-xs">
+                  Windows Teams exposes ({windows.data.length})
+                </summary>
+                <ul className="mt-1 list-disc pl-5 text-xs">
+                  {windows.data.map((label, index) => (
+                    <li key={`${index}-${label}`} className="break-all">
+                      {label}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-1 text-xs">
+                  A meeting window is titled with the meeting&apos;s name. If yours is not here,
+                  Teams is not exposing it for reading.
+                </p>
+              </details>
+            )}
+          </div>
         )}
       </div>
 

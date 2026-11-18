@@ -21,6 +21,7 @@ import { Route as ApiCaptionsMeetingsRouteImport } from './routes/api/captions.m
 import { Route as ApiCaptionsPrepareRouteImport } from './routes/api/captions.prepare'
 import { Route as ApiCaptionsRecordingsRouteImport } from './routes/api/captions.recordings'
 import { Route as ApiCaptionsStreamRouteImport } from './routes/api/captions.stream'
+import { Route as ApiCaptionsWindowsRouteImport } from './routes/api/captions.windows'
 import { Route as ApiChatStatusRouteImport } from './routes/api/chat.status'
 import { Route as ApiGraphBuildRouteImport } from './routes/api/graph.build'
 import { Route as ApiGraphEventsRouteImport } from './routes/api/graph.events'
@@ -88,6 +89,11 @@ const ApiCaptionsStreamRoute = ApiCaptionsStreamRouteImport.update({
   path: '/api/captions/stream',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCaptionsWindowsRoute = ApiCaptionsWindowsRouteImport.update({
+  id: '/api/captions/windows',
+  path: '/api/captions/windows',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChatStatusRoute = ApiChatStatusRouteImport.update({
   id: '/status',
   path: '/status',
@@ -132,6 +138,7 @@ export interface FileRoutesByFullPath {
   '/api/captions/prepare': typeof ApiCaptionsPrepareRoute
   '/api/captions/recordings': typeof ApiCaptionsRecordingsRoute
   '/api/captions/stream': typeof ApiCaptionsStreamRoute
+  '/api/captions/windows': typeof ApiCaptionsWindowsRoute
   '/api/chat/status': typeof ApiChatStatusRoute
   '/api/graph/build': typeof ApiGraphBuildRoute
   '/api/graph/events': typeof ApiGraphEventsRoute
@@ -152,6 +159,7 @@ export interface FileRoutesByTo {
   '/api/captions/prepare': typeof ApiCaptionsPrepareRoute
   '/api/captions/recordings': typeof ApiCaptionsRecordingsRoute
   '/api/captions/stream': typeof ApiCaptionsStreamRoute
+  '/api/captions/windows': typeof ApiCaptionsWindowsRoute
   '/api/chat/status': typeof ApiChatStatusRoute
   '/api/graph/build': typeof ApiGraphBuildRoute
   '/api/graph/events': typeof ApiGraphEventsRoute
@@ -173,6 +181,7 @@ export interface FileRoutesById {
   '/api/captions/prepare': typeof ApiCaptionsPrepareRoute
   '/api/captions/recordings': typeof ApiCaptionsRecordingsRoute
   '/api/captions/stream': typeof ApiCaptionsStreamRoute
+  '/api/captions/windows': typeof ApiCaptionsWindowsRoute
   '/api/chat/status': typeof ApiChatStatusRoute
   '/api/graph/build': typeof ApiGraphBuildRoute
   '/api/graph/events': typeof ApiGraphEventsRoute
@@ -195,6 +204,7 @@ export interface FileRouteTypes {
     | '/api/captions/prepare'
     | '/api/captions/recordings'
     | '/api/captions/stream'
+    | '/api/captions/windows'
     | '/api/chat/status'
     | '/api/graph/build'
     | '/api/graph/events'
@@ -215,6 +225,7 @@ export interface FileRouteTypes {
     | '/api/captions/prepare'
     | '/api/captions/recordings'
     | '/api/captions/stream'
+    | '/api/captions/windows'
     | '/api/chat/status'
     | '/api/graph/build'
     | '/api/graph/events'
@@ -235,6 +246,7 @@ export interface FileRouteTypes {
     | '/api/captions/prepare'
     | '/api/captions/recordings'
     | '/api/captions/stream'
+    | '/api/captions/windows'
     | '/api/chat/status'
     | '/api/graph/build'
     | '/api/graph/events'
@@ -256,6 +268,7 @@ export interface RootRouteChildren {
   ApiCaptionsPrepareRoute: typeof ApiCaptionsPrepareRoute
   ApiCaptionsRecordingsRoute: typeof ApiCaptionsRecordingsRoute
   ApiCaptionsStreamRoute: typeof ApiCaptionsStreamRoute
+  ApiCaptionsWindowsRoute: typeof ApiCaptionsWindowsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -342,6 +355,13 @@ declare module '@tanstack/react-router' {
       path: '/api/captions/stream'
       fullPath: '/api/captions/stream'
       preLoaderRoute: typeof ApiCaptionsStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/captions/windows': {
+      id: '/api/captions/windows'
+      path: '/api/captions/windows'
+      fullPath: '/api/captions/windows'
+      preLoaderRoute: typeof ApiCaptionsWindowsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/chat/status': {
@@ -443,6 +463,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCaptionsPrepareRoute: ApiCaptionsPrepareRoute,
   ApiCaptionsRecordingsRoute: ApiCaptionsRecordingsRoute,
   ApiCaptionsStreamRoute: ApiCaptionsStreamRoute,
+  ApiCaptionsWindowsRoute: ApiCaptionsWindowsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -35,6 +35,30 @@ export async function listTeamsPages(port: number): Promise<TeamsPage[]> {
     .map(({ id, title }) => ({ id, title }));
 }
 
+/** Every window of a browser or WebView2 that listens for DevTools on `port`, as "title · host". Local only. */
+export async function listWindowLabels(port: number): Promise<string[]> {
+  let pages: { type: string; title: string; url: string }[];
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/json`, {
+      signal: AbortSignal.timeout(3000),
+    });
+    pages = await response.json();
+  } catch {
+    return [];
+  }
+  return pages
+    .filter((page) => page.type === "page")
+    .map((page) => {
+      let host = "no address";
+      try {
+        host = new URL(page.url).hostname || host;
+      } catch {
+        // Keep the placeholder.
+      }
+      return `${page.title || "(untitled)"} · ${host}`;
+    });
+}
+
 /** A page belongs to a meeting when its title is the meeting topic, plus Teams' " | org | account" suffix. */
 export function isPageOfMeeting(pageTitle: string, topic: string) {
   return pageTitle === topic || pageTitle.startsWith(`${topic} | `);

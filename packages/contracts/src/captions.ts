@@ -41,4 +41,10 @@ export interface CaptionSource {
 
   /** Optional: gets the Teams client into a state where it can be read, for example restarting it. */
   prepare?(): Promise<void>;
+
+  /**
+   * Optional: the windows the source can see, as short labels. It explains why a meeting was not found,
+   * for example because its window is not exposed or is titled differently from what was expected.
+   */
+  listWindows?(): Promise<string[]>;
 }
