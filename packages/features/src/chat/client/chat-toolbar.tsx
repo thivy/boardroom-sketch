@@ -4,7 +4,6 @@ import {
   ComboboxContent,
   ComboboxEmpty,
   ComboboxInput,
-  ComboboxItem,
   ComboboxList,
 } from "@app/ui/components/combobox";
 import type { StoredMeeting } from "@app/contracts";
@@ -34,15 +33,14 @@ export function ChatToolbar() {
     refetchOnMount: "always",
   });
   const choices = useMemo(() => toChoices(meetings.data ?? []), [meetings.data]);
+  const transcriptOptions = choices.map((item) => ({ value: item.id, label: item.label }));
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3">
       <Combobox
-        items={choices}
-        value={transcript}
-        onValueChange={setChatTranscript}
-        itemToStringLabel={(item: TranscriptChoice) => item.label}
-        isItemEqualToValue={(a: TranscriptChoice, b: TranscriptChoice) => a.id === b.id}
+        items={transcriptOptions}
+        value={transcript?.id ?? null}
+        onValueChange={(id) => setChatTranscript(choices.find((item) => item.id === id) ?? null)}
         disabled={started}
       >
         <ComboboxInput
@@ -53,13 +51,7 @@ export function ChatToolbar() {
         />
         <ComboboxContent>
           <ComboboxEmpty>No transcripts saved yet.</ComboboxEmpty>
-          <ComboboxList>
-            {(item: TranscriptChoice) => (
-              <ComboboxItem key={item.id} value={item}>
-                {item.label}
-              </ComboboxItem>
-            )}
-          </ComboboxList>
+          <ComboboxList items={transcriptOptions} />
         </ComboboxContent>
       </Combobox>
       <Button variant="outline" disabled={!started} onClick={startNewChat}>

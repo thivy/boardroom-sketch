@@ -64,6 +64,7 @@ export function SessionDetail({
             variant="ghost"
             size="icon-sm"
             aria-label="Delete session"
+            data-delete-session-trigger=""
             disabled={session.endedAt === null}
             title={session.endedAt === null ? "Stop the recording first" : undefined}
             onClick={onDelete}

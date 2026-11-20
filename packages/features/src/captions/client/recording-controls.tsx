@@ -4,7 +4,6 @@ import {
   ComboboxContent,
   ComboboxEmpty,
   ComboboxInput,
-  ComboboxItem,
   ComboboxList,
 } from "@app/ui/components/combobox";
 import type { Meeting } from "@app/contracts";
@@ -44,6 +43,10 @@ export function RecordingControls({ options }: { options?: React.ReactNode }) {
   });
 
   const target = selected ?? targets.data?.[0]?.id;
+  const meetingOptions = targets.data?.map((item) => ({
+    value: item.id,
+    label: item.title || item.id,
+  }));
   // What Teams exposes, fetched only when no meeting was found, so the user can see why.
   const noMeetings = targets.data?.length === 0;
   const windows = useQuery({
@@ -104,13 +107,13 @@ export function RecordingControls({ options }: { options?: React.ReactNode }) {
           Find meetings
         </Button>
 
-        {targets.data && targets.data.length > 0 && (
+        {meetingOptions && meetingOptions.length > 0 && (
           <Combobox
-            items={targets.data}
-            value={targets.data.find((item) => item.id === target) ?? null}
-            onValueChange={(item) => item && selectMeeting(item.id)}
-            itemToStringLabel={(item: Meeting) => item.title || item.id}
-            isItemEqualToValue={(a: Meeting, b: Meeting) => a.id === b.id}
+            items={meetingOptions}
+            value={target ?? null}
+            onValueChange={(id) => {
+              if (id) selectMeeting(id);
+            }}
             disabled={connected || start.isPending}
           >
             <ComboboxInput
@@ -120,13 +123,7 @@ export function RecordingControls({ options }: { options?: React.ReactNode }) {
             />
             <ComboboxContent>
               <ComboboxEmpty>No meetings found.</ComboboxEmpty>
-              <ComboboxList>
-                {(item: Meeting) => (
-                  <ComboboxItem key={item.id} value={item}>
-                    {item.title || item.id}
-                  </ComboboxItem>
-                )}
-              </ComboboxList>
+              <ComboboxList items={meetingOptions} />
             </ComboboxContent>
           </Combobox>
         )}

@@ -1,4 +1,4 @@
-import { Button } from "@app/ui/components/button";
+import { Button, buttonVariants } from "@app/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,12 +27,10 @@ export function MeetingMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={
-          <Button
-            variant="outline"
-            className="pointer-events-auto h-9 max-w-[18rem] gap-2 rounded-xl bg-card/80 backdrop-blur"
-          />
-        }
+        className={cn(
+          buttonVariants({ variant: "outline" }),
+          "pointer-events-auto h-9 max-w-[18rem] gap-2 rounded-xl bg-card/80 backdrop-blur",
+        )}
       >
         <span
           className={cn(
@@ -44,12 +42,9 @@ export function MeetingMenu({
         <ChevronsUpDownIcon className="text-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-80">
-        <DropdownMenuRadioGroup
-          value={meeting?.id}
-          onValueChange={(value) => chooseMeeting(value as string)}
-        >
+        <DropdownMenuRadioGroup value={meeting?.id ?? ""} onValueChange={chooseMeeting}>
           {meetings.map((item) => (
-            <DropdownMenuRadioItem key={item.id} value={item.id}>
+            <DropdownMenuRadioItem key={item.id} value={item.id} label={item.title}>
               <span
                 className={cn(
                   "size-2 shrink-0 rounded-full",
@@ -111,20 +106,22 @@ export function GraphSearch() {
       <SearchIcon className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
       <Input
         value={query}
-        onChange={(event) => setGraphQuery(event.target.value)}
+        onValueChange={setGraphQuery}
         placeholder="Find a node or person"
         aria-label="Find a node or person"
         className="h-9 rounded-xl border-border bg-card/80 pr-8 pl-8 backdrop-blur"
       />
       {query && (
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-xs"
           aria-label="Clear search"
           onClick={() => setGraphQuery("")}
           className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
         >
           <XIcon className="size-3.5" />
-        </button>
+        </Button>
       )}
     </div>
   );

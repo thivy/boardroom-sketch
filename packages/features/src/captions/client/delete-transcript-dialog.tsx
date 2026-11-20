@@ -1,5 +1,6 @@
 import {
   AlertDialog,
+  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -7,7 +8,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@app/ui/components/alert-dialog";
-import { Button } from "@app/ui/components/button";
 import type { StoredSession } from "@app/contracts";
 import { useIsMutating, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LoaderCircleIcon } from "lucide-react";
@@ -25,11 +25,15 @@ export function DeleteTranscriptDialog() {
   return (
     <AlertDialog
       open={deleting !== undefined}
-      onOpenChange={(open) => {
-        if (!open && !pending) cancelDelete();
+      onOpenChange={(open, details) => {
+        if (open) return;
+        if (pending) details.cancel();
+        else cancelDelete();
       }}
     >
-      {deleting && <DeleteConfirmation key={deleting.id} session={deleting} />}
+      <AlertDialogContent finalFocus="[data-delete-session-trigger]">
+        {deleting && <DeleteConfirmation key={deleting.id} session={deleting} />}
+      </AlertDialogContent>
     </AlertDialog>
   );
 }
@@ -47,7 +51,7 @@ function DeleteConfirmation({ session }: { session: StoredSession }) {
   });
 
   return (
-    <AlertDialogContent>
+    <>
       <AlertDialogHeader>
         <AlertDialogTitle>Delete this transcript?</AlertDialogTitle>
         <AlertDialogDescription>
@@ -61,15 +65,16 @@ function DeleteConfirmation({ session }: { session: StoredSession }) {
       )}
       <AlertDialogFooter>
         <AlertDialogCancel disabled={deletion.isPending}>Cancel</AlertDialogCancel>
-        <Button
+        <AlertDialogAction
           variant="destructive"
+          data-agent-confirm="Permanently deletes this transcript."
           disabled={deletion.isPending}
-          onClick={() => deletion.mutate(session.id)}
+          action={() => deletion.mutateAsync(session.id)}
         >
           {deletion.isPending && <LoaderCircleIcon className="animate-spin" />}
           Delete
-        </Button>
+        </AlertDialogAction>
       </AlertDialogFooter>
-    </AlertDialogContent>
+    </>
   );
 }
