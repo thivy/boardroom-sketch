@@ -21,6 +21,8 @@
     "@app/contracts": "workspace:*",
     "@app/ui": "workspace:*",
     "@tanstack/react-query": "^5.107.1",
+    "@ui-sdk/core": "^0.1.0-beta.1",
+    "@ui-sdk/react": "^0.1.0-beta.1",
     "lucide-react": "^1.71.0",
     "zustand": "^5.1.0"
   },
