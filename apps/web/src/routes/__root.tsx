@@ -11,7 +11,13 @@ import {
 } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getCookie } from "@tanstack/react-start/server";
-import { CaptionsIcon, FileTextIcon, MessageSquareIcon, NetworkIcon } from "lucide-react";
+import {
+  CaptionsIcon,
+  FileTextIcon,
+  LayoutGridIcon,
+  MessageSquareIcon,
+  NetworkIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import appCss from "../styles.css?url";
 
@@ -38,6 +44,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 const NAV_ITEMS = [
+  { label: "Workspaces", icon: LayoutGridIcon, link: <Link to="/workspaces" /> },
   { label: "Teams captions", icon: CaptionsIcon, link: <Link to="/captions" /> },
   { label: "Transcripts", icon: FileTextIcon, link: <Link to="/transcripts" /> },
   { label: "Meeting graph", icon: NetworkIcon, link: <Link to="/graph" /> },

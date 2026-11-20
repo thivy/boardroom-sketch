@@ -17,6 +17,9 @@ import { Route as TranscriptsRouteImport } from './routes/transcripts'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiGraphRouteImport } from './routes/api/graph'
 import { Route as ApiTranscriptsRouteImport } from './routes/api/transcripts'
+import { Route as ApiWorkspacesRouteImport } from './routes/api/workspaces'
+import { Route as WorkspacesIndexRouteImport } from './routes/workspaces.index'
+import { Route as WorkspacesWorkspaceIdRouteImport } from './routes/workspaces.$workspaceId'
 import { Route as ApiCaptionsMeetingsRouteImport } from './routes/api/captions.meetings'
 import { Route as ApiCaptionsPrepareRouteImport } from './routes/api/captions.prepare'
 import { Route as ApiCaptionsRecordingsRouteImport } from './routes/api/captions.recordings'
@@ -29,6 +32,7 @@ import { Route as ApiGraphHistoryRouteImport } from './routes/api/graph.history'
 import { Route as ApiGraphLiveRouteImport } from './routes/api/graph.live'
 import { Route as ApiTranscriptsExportRouteImport } from './routes/api/transcripts.export'
 import { Route as ApiTranscriptsSessionRouteImport } from './routes/api/transcripts.session'
+import { Route as ApiWorkspacesItemRouteImport } from './routes/api/workspaces.item'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -68,6 +72,21 @@ const ApiGraphRoute = ApiGraphRouteImport.update({
 const ApiTranscriptsRoute = ApiTranscriptsRouteImport.update({
   id: '/api/transcripts',
   path: '/api/transcripts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkspacesRoute = ApiWorkspacesRouteImport.update({
+  id: '/api/workspaces',
+  path: '/api/workspaces',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorkspacesIndexRoute = WorkspacesIndexRouteImport.update({
+  id: '/workspaces/',
+  path: '/workspaces/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorkspacesWorkspaceIdRoute = WorkspacesWorkspaceIdRouteImport.update({
+  id: '/workspaces/$workspaceId',
+  path: '/workspaces/$workspaceId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCaptionsMeetingsRoute = ApiCaptionsMeetingsRouteImport.update({
@@ -130,6 +149,11 @@ const ApiTranscriptsSessionRoute = ApiTranscriptsSessionRouteImport.update({
   path: '/session',
   getParentRoute: () => ApiTranscriptsRoute,
 } as any)
+const ApiWorkspacesItemRoute = ApiWorkspacesItemRouteImport.update({
+  id: '/item',
+  path: '/item',
+  getParentRoute: () => ApiWorkspacesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -140,6 +164,9 @@ export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRouteWithChildren
   '/api/graph': typeof ApiGraphRouteWithChildren
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
+  '/api/workspaces': typeof ApiWorkspacesRouteWithChildren
+  '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
+  '/workspaces/': typeof WorkspacesIndexRoute
   '/api/captions/meetings': typeof ApiCaptionsMeetingsRoute
   '/api/captions/prepare': typeof ApiCaptionsPrepareRoute
   '/api/captions/recordings': typeof ApiCaptionsRecordingsRoute
@@ -152,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/api/graph/live': typeof ApiGraphLiveRoute
   '/api/transcripts/export': typeof ApiTranscriptsExportRoute
   '/api/transcripts/session': typeof ApiTranscriptsSessionRoute
+  '/api/workspaces/item': typeof ApiWorkspacesItemRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -162,6 +190,9 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRouteWithChildren
   '/api/graph': typeof ApiGraphRouteWithChildren
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
+  '/api/workspaces': typeof ApiWorkspacesRouteWithChildren
+  '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
+  '/workspaces': typeof WorkspacesIndexRoute
   '/api/captions/meetings': typeof ApiCaptionsMeetingsRoute
   '/api/captions/prepare': typeof ApiCaptionsPrepareRoute
   '/api/captions/recordings': typeof ApiCaptionsRecordingsRoute
@@ -174,6 +205,7 @@ export interface FileRoutesByTo {
   '/api/graph/live': typeof ApiGraphLiveRoute
   '/api/transcripts/export': typeof ApiTranscriptsExportRoute
   '/api/transcripts/session': typeof ApiTranscriptsSessionRoute
+  '/api/workspaces/item': typeof ApiWorkspacesItemRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -185,6 +217,9 @@ export interface FileRoutesById {
   '/api/chat': typeof ApiChatRouteWithChildren
   '/api/graph': typeof ApiGraphRouteWithChildren
   '/api/transcripts': typeof ApiTranscriptsRouteWithChildren
+  '/api/workspaces': typeof ApiWorkspacesRouteWithChildren
+  '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
+  '/workspaces/': typeof WorkspacesIndexRoute
   '/api/captions/meetings': typeof ApiCaptionsMeetingsRoute
   '/api/captions/prepare': typeof ApiCaptionsPrepareRoute
   '/api/captions/recordings': typeof ApiCaptionsRecordingsRoute
@@ -197,6 +232,7 @@ export interface FileRoutesById {
   '/api/graph/live': typeof ApiGraphLiveRoute
   '/api/transcripts/export': typeof ApiTranscriptsExportRoute
   '/api/transcripts/session': typeof ApiTranscriptsSessionRoute
+  '/api/workspaces/item': typeof ApiWorkspacesItemRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -209,6 +245,9 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/graph'
     | '/api/transcripts'
+    | '/api/workspaces'
+    | '/workspaces/$workspaceId'
+    | '/workspaces/'
     | '/api/captions/meetings'
     | '/api/captions/prepare'
     | '/api/captions/recordings'
@@ -221,6 +260,7 @@ export interface FileRouteTypes {
     | '/api/graph/live'
     | '/api/transcripts/export'
     | '/api/transcripts/session'
+    | '/api/workspaces/item'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -231,6 +271,9 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/graph'
     | '/api/transcripts'
+    | '/api/workspaces'
+    | '/workspaces/$workspaceId'
+    | '/workspaces'
     | '/api/captions/meetings'
     | '/api/captions/prepare'
     | '/api/captions/recordings'
@@ -243,6 +286,7 @@ export interface FileRouteTypes {
     | '/api/graph/live'
     | '/api/transcripts/export'
     | '/api/transcripts/session'
+    | '/api/workspaces/item'
   id:
     | '__root__'
     | '/'
@@ -253,6 +297,9 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/graph'
     | '/api/transcripts'
+    | '/api/workspaces'
+    | '/workspaces/$workspaceId'
+    | '/workspaces/'
     | '/api/captions/meetings'
     | '/api/captions/prepare'
     | '/api/captions/recordings'
@@ -265,6 +312,7 @@ export interface FileRouteTypes {
     | '/api/graph/live'
     | '/api/transcripts/export'
     | '/api/transcripts/session'
+    | '/api/workspaces/item'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -276,6 +324,9 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRouteWithChildren
   ApiGraphRoute: typeof ApiGraphRouteWithChildren
   ApiTranscriptsRoute: typeof ApiTranscriptsRouteWithChildren
+  ApiWorkspacesRoute: typeof ApiWorkspacesRouteWithChildren
+  WorkspacesWorkspaceIdRoute: typeof WorkspacesWorkspaceIdRoute
+  WorkspacesIndexRoute: typeof WorkspacesIndexRoute
   ApiCaptionsMeetingsRoute: typeof ApiCaptionsMeetingsRoute
   ApiCaptionsPrepareRoute: typeof ApiCaptionsPrepareRoute
   ApiCaptionsRecordingsRoute: typeof ApiCaptionsRecordingsRoute
@@ -339,6 +390,27 @@ declare module '@tanstack/react-router' {
       path: '/api/transcripts'
       fullPath: '/api/transcripts'
       preLoaderRoute: typeof ApiTranscriptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workspaces': {
+      id: '/api/workspaces'
+      path: '/api/workspaces'
+      fullPath: '/api/workspaces'
+      preLoaderRoute: typeof ApiWorkspacesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/workspaces/': {
+      id: '/workspaces/'
+      path: '/workspaces'
+      fullPath: '/workspaces/'
+      preLoaderRoute: typeof WorkspacesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/workspaces/$workspaceId': {
+      id: '/workspaces/$workspaceId'
+      path: '/workspaces/$workspaceId'
+      fullPath: '/workspaces/$workspaceId'
+      preLoaderRoute: typeof WorkspacesWorkspaceIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/captions/meetings': {
@@ -425,6 +497,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTranscriptsSessionRouteImport
       parentRoute: typeof ApiTranscriptsRoute
     }
+    '/api/workspaces/item': {
+      id: '/api/workspaces/item'
+      path: '/item'
+      fullPath: '/api/workspaces/item'
+      preLoaderRoute: typeof ApiWorkspacesItemRouteImport
+      parentRoute: typeof ApiWorkspacesRoute
+    }
   }
 }
 
@@ -471,6 +550,18 @@ const ApiTranscriptsRouteWithChildren = ApiTranscriptsRoute._addFileChildren(
   ApiTranscriptsRouteChildren,
 )
 
+interface ApiWorkspacesRouteChildren {
+  ApiWorkspacesItemRoute: typeof ApiWorkspacesItemRoute
+}
+
+const ApiWorkspacesRouteChildren: ApiWorkspacesRouteChildren = {
+  ApiWorkspacesItemRoute: ApiWorkspacesItemRoute,
+}
+
+const ApiWorkspacesRouteWithChildren = ApiWorkspacesRoute._addFileChildren(
+  ApiWorkspacesRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CaptionsRoute: CaptionsRoute,
@@ -480,6 +571,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRouteWithChildren,
   ApiGraphRoute: ApiGraphRouteWithChildren,
   ApiTranscriptsRoute: ApiTranscriptsRouteWithChildren,
+  ApiWorkspacesRoute: ApiWorkspacesRouteWithChildren,
+  WorkspacesWorkspaceIdRoute: WorkspacesWorkspaceIdRoute,
+  WorkspacesIndexRoute: WorkspacesIndexRoute,
   ApiCaptionsMeetingsRoute: ApiCaptionsMeetingsRoute,
   ApiCaptionsPrepareRoute: ApiCaptionsPrepareRoute,
   ApiCaptionsRecordingsRoute: ApiCaptionsRecordingsRoute,

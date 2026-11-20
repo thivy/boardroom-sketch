@@ -95,4 +95,5 @@ export type {
 export { replayGraph, type ReplayOp } from "./graph-replay";
 export type { StructuredModel, StructuredRequest, StructuredResponse } from "./model";
 export type { PipelineEvent, PipelineEventKind, PipelineLog } from "./pipeline-log";
+export type { Workspace, WorkspaceStore } from "./workspaces";
 export { DEFAULT_SETTINGS, type AppSettings, type SettingsStore } from "./settings";

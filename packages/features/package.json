@@ -12,7 +12,9 @@
     "./chat/server": "./src/chat/server/index.ts",
     "./graph/client": "./src/graph/client/index.ts",
     "./graph/server": "./src/graph/server/index.ts",
-    "./updates/client": "./src/updates/client/index.ts"
+    "./updates/client": "./src/updates/client/index.ts",
+    "./workspaces/client": "./src/workspaces/client/index.ts",
+    "./workspaces/server": "./src/workspaces/server/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
