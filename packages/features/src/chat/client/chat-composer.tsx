@@ -32,7 +32,7 @@ export function ChatComposer() {
           rows={1}
           value={draft}
           disabled={unavailable}
-          onChange={(event) => setChatDraft(event.target.value)}
+          onValueChange={setChatDraft}
           onKeyDown={onKeyDown}
         />
         {busy ? (

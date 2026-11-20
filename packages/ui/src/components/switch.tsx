@@ -1,17 +1,18 @@
 "use client";
 
-import { Switch as SwitchPrimitive } from "@base-ui/react/switch";
+import type { ComponentProps } from "react";
+import { Switch as SwitchPrimitive, SwitchThumb } from "@ui-sdk/react/switch";
 import { cn } from "@app/ui/lib/utils";
 
 function Switch({
   className,
   size = "default",
   ...props
-}: SwitchPrimitive.Root.Props & {
+}: ComponentProps<typeof SwitchPrimitive> & {
   size?: "sm" | "default";
 }) {
   return (
-    <SwitchPrimitive.Root
+    <SwitchPrimitive
       data-slot="switch"
       data-size={size}
       className={cn(
@@ -20,11 +21,11 @@ function Switch({
       )}
       {...props}
     >
-      <SwitchPrimitive.Thumb
+      <SwitchThumb
         data-slot="switch-thumb"
         className="pointer-events-none block rounded-2xl bg-background shadow-sm ring-0 transition-transform not-dark:bg-clip-padding group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 data-checked:translate-x-[calc(100%-4px)] dark:data-checked:bg-primary-foreground data-unchecked:translate-x-0 dark:data-unchecked:bg-foreground"
       />
-    </SwitchPrimitive.Root>
+    </SwitchPrimitive>
   );
 }
 

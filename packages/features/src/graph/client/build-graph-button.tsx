@@ -1,5 +1,6 @@
 import {
   AlertDialog,
+  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -11,6 +12,7 @@ import { Button, buttonVariants } from "@app/ui/components/button";
 import type { GraphBuildStatus, StoredSession } from "@app/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LoaderCircleIcon, NetworkIcon, SquareIcon } from "lucide-react";
+import { useRef } from "react";
 import { request, jsonRequest } from "../../shared/client/api-request";
 import { askToReplaceGraph, closeReplaceGraph, useGraphBuildStore } from "./graph-build-store";
 
@@ -27,6 +29,7 @@ export function BuildGraphButton({
   meetingId: string;
 }) {
   const queryClient = useQueryClient();
+  const buildTrigger = useRef<HTMLButtonElement>(null);
   const confirming = useGraphBuildStore((state) => state.confirmingSessionId === session.id);
   const key = ["graph", "build", session.id];
 
@@ -88,6 +91,7 @@ export function BuildGraphButton({
         </>
       ) : (
         <Button
+          ref={buildTrigger}
           variant="outline"
           size="sm"
           disabled={recording || status.isPending || start.isPending}
@@ -127,11 +131,13 @@ export function BuildGraphButton({
 
       <AlertDialog
         open={confirming}
-        onOpenChange={(open) => {
-          if (!open && !start.isPending) closeReplaceGraph();
+        onOpenChange={(open, details) => {
+          if (open) return;
+          if (start.isPending) details.cancel();
+          else closeReplaceGraph();
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent finalFocus={() => buildTrigger.current}>
           <AlertDialogHeader>
             <AlertDialogTitle>Replace this meeting&apos;s graph?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -147,14 +153,15 @@ export function BuildGraphButton({
           )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={start.isPending}>Cancel</AlertDialogCancel>
-            <Button
+            <AlertDialogAction
               variant="destructive"
+              data-agent-confirm="Replaces this meeting's graph and deletes its history."
               disabled={start.isPending}
-              onClick={() => start.mutate(true)}
+              action={() => start.mutateAsync(true)}
             >
               {start.isPending && <LoaderCircleIcon className="animate-spin" />}
               Replace
-            </Button>
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

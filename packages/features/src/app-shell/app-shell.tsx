@@ -7,7 +7,7 @@ export type NavItem = {
   label: string;
   icon: LucideIcon;
   /** The link the app builds with its router; the sidebar renders its button as this element. */
-  link: ReactElement;
+  link: ReactElement<Record<string, unknown>>;
 };
 
 export type AppShellProps = {
