@@ -1,19 +1,5 @@
 import { createStore } from "../../shared/client/create-store";
-
-/** The parts of Tauri's global API (`withGlobalTauri`) that updating uses; absent in a normal browser. */
-type TauriUpdate = {
-  version: string;
-  downloadAndInstall(
-    onEvent?: (event: {
-      event: "Started" | "Progress" | "Finished";
-      data?: { contentLength?: number; chunkLength?: number };
-    }) => void,
-  ): Promise<void>;
-};
-type TauriGlobal = {
-  updater?: { check(): Promise<TauriUpdate | null> };
-  process?: { relaunch(): Promise<void> };
-};
+import { desktop } from "../../shared/client/desktop";
 
 export type UpdateState =
   | { status: "none" }
@@ -26,13 +12,14 @@ const CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
 const updates = createStore(
   {
     state: { status: "none" } as UpdateState,
-    update: undefined as TauriUpdate | undefined,
+    updateVersion: undefined as string | undefined,
   },
   {
     // The banner is on screen for as long as the app is open: check on start and every few hours.
     whileUsed: () => {
       // The dev server runs in the desktop window too, but there is no release to update to.
-      if (process.env.NODE_ENV !== "production" || tauri()?.updater === undefined) return () => {};
+      if (process.env.NODE_ENV !== "production" || desktop()?.updates === undefined)
+        return () => {};
       void checkForUpdate();
       const timer = setInterval(checkForUpdate, CHECK_EVERY_MS);
       return () => clearInterval(timer);
@@ -43,15 +30,13 @@ const updates = createStore(
 
 export const useUpdateStore = updates.useStore;
 
-const tauri = () => (window as unknown as { __TAURI__?: TauriGlobal }).__TAURI__;
-
 /** Asks the updater for a newer version; offline or no release yet leaves things as they were. */
 async function checkForUpdate() {
   try {
-    const found = await tauri()?.updater?.check();
+    const found = await desktop()?.updates.check();
     if (!found) return;
     updates.set((current) => ({
-      update: found,
+      updateVersion: found.version,
       state:
         current.state.status === "installing"
           ? current.state
@@ -64,27 +49,17 @@ async function checkForUpdate() {
 
 /** Downloads the found update and restarts into it. */
 export async function installUpdate() {
-  const { update } = updates.get();
-  const process = tauri()?.process;
-  if (!update || !process) return;
+  const { updateVersion } = updates.get();
+  const updater = desktop()?.updates;
+  if (!updateVersion || !updater) return;
 
-  const version = update.version;
+  const version = updateVersion;
   updates.set({ state: { status: "installing", version } });
-  let total = 0;
-  let received = 0;
+  const stopProgress = updater.onProgress(({ percent }) => {
+    updates.set({ state: { status: "installing", version, percent } });
+  });
   try {
-    await update.downloadAndInstall((event) => {
-      if (event.event === "Started") total = event.data?.contentLength ?? 0;
-      if (event.event === "Progress") {
-        received += event.data?.chunkLength ?? 0;
-        if (total > 0) {
-          updates.set({
-            state: { status: "installing", version, percent: Math.round((received / total) * 100) },
-          });
-        }
-      }
-    });
-    await process.relaunch();
+    await updater.install();
   } catch (error) {
     updates.set({
       state: {
@@ -93,5 +68,7 @@ export async function installUpdate() {
         message: error instanceof Error ? error.message : String(error),
       },
     });
+  } finally {
+    stopProgress();
   }
 }

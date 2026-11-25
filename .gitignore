@@ -18,6 +18,7 @@ coverage
 .nitro/
 .tanstack/
 dist/
+apps/desktop/build/
 
 # misc
 .DS_Store
