@@ -1,6 +1,6 @@
 name: Desktop app
 
-# Builds the Tauri app on each OS and, when asked, releases it.
+# Builds the Electron app on each OS and, when asked, releases it.
 #
 # - Run workflow with bump "none" (the default): builds the installers from the chosen branch and
 #   uploads them as workflow artifacts. Nothing is tagged or published.
@@ -81,12 +81,6 @@ jobs:
         with:
           bun-version: 1.4.4
 
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: swatinem/rust-cache@v2
-        with:
-          workspaces: apps/desktop/src-tauri
-
       - run: bun install --frozen-lockfile
 
       # The updater compares this version with the installed one, so a release must carry its tag's version.
@@ -98,7 +92,7 @@ jobs:
         run: |
           bun -e "
             const fs = require('fs');
-            const file = 'apps/desktop/src-tauri/tauri.conf.json';
+            const file = 'apps/desktop/package.json';
             const config = JSON.parse(fs.readFileSync(file, 'utf8'));
             config.version = process.env.TAG.replace(/^v/, '');
             fs.writeFileSync(file, JSON.stringify(config, null, 2));
@@ -106,9 +100,11 @@ jobs:
 
       - name: Build the desktop app
         env:
-          # Signs the update packages; the matching public key is in tauri.conf.json.
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Optional platform signing certificates; unsigned builds still work for local testing.
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
         run: bun run desktop:release
 
       - name: Upload installers
@@ -118,11 +114,11 @@ jobs:
           if-no-files-found: error
           retention-days: 30
           path: |
-            apps/desktop/src-tauri/target/release/bundle/**/*.msi
-            apps/desktop/src-tauri/target/release/bundle/**/*.exe
-            apps/desktop/src-tauri/target/release/bundle/**/*.dmg
-            apps/desktop/src-tauri/target/release/bundle/**/*.app.tar.gz
-            apps/desktop/src-tauri/target/release/bundle/**/*.sig
+            apps/desktop/dist/**/*.exe
+            apps/desktop/dist/**/*.blockmap
+            apps/desktop/dist/**/*.dmg
+            apps/desktop/dist/**/*.zip
+            apps/desktop/dist/latest*.yml
 
   release:
     name: Publish release
@@ -138,10 +134,6 @@ jobs:
         with:
           path: installers
           merge-multiple: true
-
-      # Names without spaces, and latest.json: the file the installed app checks for a newer version.
-      - name: Write the updater manifest
-        run: node .github/scripts/updater-manifest.mjs installers "${{ needs.version.outputs.tag }}" "${{ github.repository }}"
 
       # Creates the tag on the commit that was built when it does not exist yet. (A tag made with
       # GITHUB_TOKEN does not start another run of this workflow.)

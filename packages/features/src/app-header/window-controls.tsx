@@ -1,23 +1,13 @@
 import { MinusIcon, SquareIcon, XIcon } from "lucide-react";
 import { useSyncExternalStore } from "react";
-
-/** The parts of Tauri's global API (`withGlobalTauri`) the window buttons use; absent in a browser. */
-type TauriWindow = {
-  minimize(): Promise<void>;
-  toggleMaximize(): Promise<void>;
-  close(): Promise<void>;
-};
-type TauriGlobal = { window?: { getCurrentWindow(): TauriWindow } };
-
-const tauriWindow = () =>
-  (window as unknown as { __TAURI__?: TauriGlobal }).__TAURI__?.window?.getCurrentWindow();
+import { desktop } from "../shared/client/desktop";
 
 const noSubscription = () => () => {};
 
 const buttons = [
-  { label: "Minimize", icon: MinusIcon, run: () => tauriWindow()?.minimize() },
-  { label: "Maximize", icon: SquareIcon, run: () => tauriWindow()?.toggleMaximize() },
-  { label: "Close", icon: XIcon, run: () => tauriWindow()?.close() },
+  { label: "Minimize", icon: MinusIcon, run: () => desktop()?.window.minimize() },
+  { label: "Maximize", icon: SquareIcon, run: () => desktop()?.window.toggleMaximize() },
+  { label: "Close", icon: XIcon, run: () => desktop()?.window.close() },
 ];
 
 /**
@@ -27,13 +17,13 @@ const buttons = [
 export function WindowControls() {
   const desktop = useSyncExternalStore(
     noSubscription,
-    () => tauriWindow() !== undefined,
+    () => window.boardroomSketch !== undefined,
     () => false,
   );
   if (!desktop) return null;
 
   return (
-    <div className="ml-auto flex items-center">
+    <div className="ml-auto flex items-center [-webkit-app-region:no-drag]">
       {buttons.map(({ label, icon: Icon, run }) => (
         <button
           key={label}

@@ -2,17 +2,76 @@
   "name": "desktop",
   "version": "0.1.0",
   "private": true,
+  "description": "Boardroom Sketch desktop application",
+  "author": "thivy",
   "type": "module",
+  "main": "src/main.mjs",
   "scripts": {
-    "prepare:sidecar": "bun scripts/prepare-sidecar.mjs",
-    "dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
-    "dev:built": "bun run --cwd ../web build && bun scripts/prepare-sidecar.mjs && tauri dev",
-    "build": "bun run --cwd ../web build && bun scripts/prepare-sidecar.mjs && tauri build --config src-tauri/tauri.local.conf.json",
-    "tauri": "tauri",
-    "typecheck": "bun -e \"await Bun.build({ entrypoints: ['scripts/prepare-sidecar.mjs'], target: 'bun', throw: true })\"",
-    "build:release": "bun run --cwd ../web build && bun scripts/prepare-sidecar.mjs && tauri build"
+    "prepare:resources": "bun scripts/prepare-resources.mjs",
+    "dev": "bun scripts/dev.mjs",
+    "dev:built": "bun run --cwd ../web build && bun run prepare:resources && electron .",
+    "build": "bun run --cwd ../web build && bun run prepare:resources && electron-builder",
+    "build:dir": "bun run --cwd ../web build && bun run prepare:resources && electron-builder --dir",
+    "typecheck": "bun -e \"await Bun.build({ entrypoints: ['src/main.mjs', 'src/preload.cjs', 'scripts/dev.mjs', 'scripts/prepare-resources.mjs'], target: 'node', packages: 'external', throw: true })\"",
+    "build:release": "bun run build"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.12.4"
+    "electron": "45.5.0",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "dev.thivy.boardroomsketch",
+    "productName": "Boardroom Sketch",
+    "asar": true,
+    "files": [
+      "src/**/*",
+      "loading/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/server",
+        "to": "server"
+      },
+      {
+        "from": "build/bun",
+        "to": "bun"
+      }
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "artifactName": "Boardroom-Sketch-${version}-${os}-${arch}.${ext}",
+    "publish": {
+      "provider": "github",
+      "owner": "thivy",
+      "repo": "boardroom-sketch"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "app-icon.png",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "icon": "app-icon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

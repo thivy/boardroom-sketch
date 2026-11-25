@@ -5,7 +5,7 @@ A [Bun](https://bun.sh) workspaces monorepo: a thin [TanStack Start](https://tan
 ```
 apps/web             TanStack Start app: root route and page routes. Nothing else.
 packages/features    One folder per feature: `app-shell` (sidebar layout) and `app-header`.
-apps/desktop         Tauri shell: a native window on the web app, which runs as a bundled Bun sidecar.
+apps/desktop         Electron shell: a native window on the web app, which runs as a bundled Bun sidecar.
 packages/ui  Styled ui-sdk components, shared layout, the `cn()` helper, and the Tailwind theme (`styles.css`).
 packages/contracts   Types shared by client, server and adapters, including the `CaptionSource` port.
 packages/teams-cdp   Interim `CaptionSource` that reads Teams captions over the Chrome DevTools Protocol.
@@ -50,24 +50,24 @@ The SDK is not bundled into the server build: it finds its runtime in a platform
 
 A recorded meeting can also be turned into a graph of what was meant: decisions, actions, questions, risks and claims, the links between them and the quotes behind each. It is **off by default** because it asks a model about the meeting as it happens, which counts against the signed-in Copilot account. Switch on **Build graph live** (beside the recording buttons on the **Teams captions** page, or on the **Meeting graph** page) to follow recordings; the choice is kept and applies at once, also to a recording that is running. To build one for a transcript that is already saved, press **Generate graph** on the **Transcripts** page; that needs no setting and only runs when you press it. The graph uses the first usable of a short preference list of models (`gpt-5.6-luna`, `mai-code-2-flash`...), set in `packages/copilot-sdk/src/model.ts`. Watch it build live on the **Meeting graph** page (`/graph`), or read it at `GET /api/graph?meeting=<id>`. See [docs/graph-model.md](docs/graph-model.md) and [docs/graph-pipeline.md](docs/graph-pipeline.md).
 
-## Desktop app (Tauri)
+## Desktop app (Electron)
 
-`apps/desktop` wraps the app in a native window. The app needs its server (it talks to Teams over CDP, keeps transcripts in SQLite and calls the Copilot SDK), so Tauri ships the built server as a resource and starts it with a bundled Bun binary (a sidecar) on a free local port. The window loads it from `127.0.0.1`, and the sidecar stops when the app closes.
+`apps/desktop` wraps the app in a native window. The app needs its server (it talks to Teams over CDP, keeps transcripts in SQLite and calls the Copilot SDK), so Electron ships the built server as a resource and starts it with a bundled Bun binary (a sidecar) on a free local port. The window loads it from `127.0.0.1`, and the sidecar stops when the app closes.
 
 - Transcripts are kept in the app data folder (`%APPDATA%\dev.thivy.boardroomsketch\transcripts.db` on Windows), not where the app was started from.
-- The Copilot SDK is not bundled into the server, so `prepare-sidecar` installs it next to the server. That brings its runtime package, which makes the installer large (about 200 MB).
+- The Copilot SDK is not bundled into the server, so `prepare:resources` installs it next to the server. That brings its runtime package, which makes the installer large (about 200 MB).
 - The sidecar is a copy of the Bun that runs the build (CI pins it to the version in `packageManager`), so build on the OS you are targeting.
 
-Needs [Rust](https://rustup.rs) and, on Windows, the Visual Studio C++ Build Tools plus WebView2 (included in Windows 11). Open a new terminal after installing Rust so it is on the PATH.
+Electron provides its own renderer runtime, so no Rust toolchain or system webview is needed.
 
 ```bash
 bun run desktop:dev       # opens the window on the Vite dev server: hot reload for web code
 bun run desktop:dev:built # builds the web app and runs it from the bundled Bun sidecar, as in a release
-bun run desktop:build     # unsigned local installer under apps/desktop/src-tauri/target/release/bundle
-bun run desktop:release   # also signs the update packages; needs TAURI_SIGNING_PRIVATE_KEY (CI sets it)
+bun run desktop:build     # local installers under apps/desktop/dist
+bun run desktop:release   # release alias; the workflow supplies signing certificates when available
 ```
 
-`desktop:dev` uses `src-tauri/tauri.dev.conf.json`: Tauri starts `vite dev` on `127.0.0.1:3100` (not 3000, so it can run beside `bun run dev`), waits for it, and loads it in the window. Edits to web code hot reload in place. Rust changes under `src-tauri` rebuild and restart the app. It needs no sidecar, so nothing has to be prepared first, but it stores transcripts where `bun run dev` does (`./data` in `apps/web`), not in the app data folder. Use `desktop:dev:built` to test the sidecar, the data folder and the startup error screen; it runs the production build, so run it again after changing web code.
+`desktop:dev` starts `vite dev` on `127.0.0.1:3100` (not 3000, so it can run beside `bun run dev`), waits for it, and loads it in Electron. Edits to web code hot reload in place. The Electron main process restarts when this command is rerun. It needs no sidecar, so nothing has to be prepared first, but it stores transcripts where `bun run dev` does (`./data` in `apps/web`), not in the app data folder. Use `desktop:dev:built` to test the sidecar, the data folder and the startup error screen; it runs the production build, so run it again after changing web code.
 
 ### Download a build from GitHub
 
@@ -87,14 +87,13 @@ The installed desktop app checks the latest GitHub Release for a newer version w
 
 How it fits together:
 
-- Update packages are signed. The public key is in `tauri.conf.json`; the private key is the `TAURI_SIGNING_PRIVATE_KEY` Actions secret (a copy is at `~/.tauri/boardroom-sketch.key` on the machine that created it; if it is lost, installed apps can no longer be updated, so keep a backup). Add `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` too if you ever give the key a password.
-- A `v*` tag build sets the app version from the tag, signs the packages and publishes `latest.json` next to the installers (`.github/scripts/updater-manifest.mjs`). The app reads `https://github.com/thivy/boardroom-sketch/releases/latest/download/latest.json`.
-- Updates only reach apps built with the public key and an updater-enabled version, so the first release with this feature has to be installed by hand; later tags update it.
-- The window loads the app from `127.0.0.1`, so `capabilities/default.json` lets that origin (only) use the updater and restart. The banner is `packages/features/src/updates`.
+- A `v*` tag build sets the app version from the tag. Electron Builder signs packages when the workflow's `CSC_*` or `WIN_CSC_*` secrets are configured and publishes the standard `latest.yml` or `latest-mac.yml` metadata next to the installers.
+- The packaged Electron main process checks the GitHub Release feed. A sandboxed preload bridge exposes only the check, download/install and progress operations to the banner in `packages/features/src/updates`.
+- Automatic updates require code-signed macOS builds. Keep the signing secrets configured for releases that should update installed macOS apps; Windows SmartScreen trust also depends on the signing certificate.
 
 Release steps: run the **Desktop app** workflow (Actions → _Desktop app_ → _Run workflow_, on `main`) and choose `patch`, `minor` or `major` as the bump. See [Download a build from GitHub](#download-a-build-from-github) for what it does.
 
-The builds are not code-signed, so Windows SmartScreen and macOS Gatekeeper warn on first run. The installer version comes from `apps/desktop/src-tauri/tauri.conf.json`, not the tag.
+Without signing secrets, Windows SmartScreen and macOS Gatekeeper warn on first run. The installer version comes from `apps/desktop/package.json`; release workflows replace it with the tag's version.
 
 ## Getting started
 
