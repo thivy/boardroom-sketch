@@ -30,7 +30,9 @@ copyFileSync(process.execPath, join(bun, process.platform === "win32" ? "bun.exe
 const server = join(build, "server");
 cpSync(output, server, { recursive: true });
 
-const rootPackage = JSON.parse(readFileSync(resolve(root, "../../package.json"), "utf8"));
+const rootPackage = JSON.parse(readFileSync(resolve(root, "../../package.json"), "utf8")) as {
+  dependencies: Record<string, string>;
+};
 writeFileSync(
   join(server, "package.json"),
   JSON.stringify({ private: true, dependencies: rootPackage.dependencies }, null, 2),

@@ -6,7 +6,7 @@
 (`apps/web/.output`) as a bundled Bun sidecar and navigates its window to it.
 
 - Keep the app a normal web server. The shell only supplies `PORT`, `HOST` and `TRANSCRIPTS_DB`.
-- `scripts/prepare-resources.mjs` installs the packages the server build leaves external (currently
+- `scripts/prepare-resources.ts` installs the packages the server build leaves external (currently
   `@github/copilot-sdk`) and stages the Bun runtime for Electron Builder.
 - `src/main.mjs` owns process, filesystem, update and window operations. `src/preload.cjs` exposes
   only the narrow `window.boardroomSketch` API with context isolation and the sandbox enabled.

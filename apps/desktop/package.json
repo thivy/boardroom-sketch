@@ -7,19 +7,19 @@
   "type": "module",
   "main": "src/main.mjs",
   "scripts": {
-    "prepare:resources": "bun scripts/prepare-resources.mjs",
-    "dev": "bun scripts/dev.mjs",
+    "prepare:resources": "bun scripts/prepare-resources.ts",
+    "dev": "bun scripts/dev.ts",
     "dev:built": "bun run --cwd ../web build && bun run prepare:resources && electron .",
     "build": "bun run --cwd ../web build && bun run prepare:resources && electron-builder",
     "build:dir": "bun run --cwd ../web build && bun run prepare:resources && electron-builder --dir",
-    "typecheck": "bun -e \"await Bun.build({ entrypoints: ['src/main.mjs', 'src/preload.cjs', 'scripts/dev.mjs', 'scripts/prepare-resources.mjs'], target: 'node', packages: 'external', throw: true })\"",
+    "typecheck": "bun -e \"await Bun.build({ entrypoints: ['src/main.mjs', 'src/preload.cjs', 'scripts/dev.ts', 'scripts/prepare-resources.ts'], target: 'node', packages: 'external', throw: true })\"",
     "build:release": "bun run build"
   },
   "dependencies": {
     "electron-updater": "^6.8.11"
   },
   "devDependencies": {
-    "electron": "45.5.0",
+    "electron": "45.3.4",
     "electron-builder": "^26.18.0"
   },
   "build": {

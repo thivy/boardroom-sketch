@@ -1,21 +1,24 @@
 import electronPath from "electron";
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
+import { connect } from "node:net";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const web = resolve(root, "../web");
-const url = "http://127.0.0.1:3100";
+const devHost = "127.0.0.1";
+const devPort = 3100;
+const url = `http://${devHost}:${devPort}`;
 const vite = spawn(
   process.execPath,
-  ["run", "--cwd", web, "dev", "--host", "127.0.0.1", "--port", "3100", "--strictPort"],
+  ["run", "--cwd", web, "dev", "--host", devHost, "--port", String(devPort), "--strictPort"],
   { cwd: root, stdio: "inherit" },
 );
 
-let electron;
+let electron: ChildProcess | undefined;
 let stopping = false;
 
-function stop(child) {
+function stop(child: ChildProcess | undefined) {
   if (child && child.exitCode === null && child.signalCode === null) child.kill();
 }
 
@@ -27,15 +30,23 @@ function shutdown(code = 0) {
   process.exitCode = code;
 }
 
+// A TCP connect is enough to know Vite is listening. An HTTP probe with a timeout would be cut off
+// while Vite compiles the first page, and Vite logs each cut-off request as "Error: aborted".
+function portIsOpen() {
+  return new Promise<boolean>((resolvePromise) => {
+    const socket = connect({ host: devHost, port: devPort });
+    socket.once("connect", () => {
+      socket.destroy();
+      resolvePromise(true);
+    });
+    socket.once("error", () => resolvePromise(false));
+  });
+}
+
 async function waitForVite() {
   for (let attempt = 0; attempt < 180; attempt += 1) {
     if (vite.exitCode !== null) throw new Error("The Vite development server stopped.");
-    try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(1_000) });
-      if (response.ok) return;
-    } catch {
-      // Vite may still be starting.
-    }
+    if (await portIsOpen()) return;
     await new Promise((resolvePromise) => setTimeout(resolvePromise, 500));
   }
   throw new Error(`The Vite development server did not become ready at ${url}.`);
@@ -49,7 +60,7 @@ process.once("SIGTERM", () => shutdown());
 
 try {
   await waitForVite();
-  electron = spawn(electronPath, [".", ...process.argv.slice(2)], {
+  electron = spawn(electronPath as unknown as string, [".", ...process.argv.slice(2)], {
     cwd: root,
     env: { ...process.env, BOARDROOM_SKETCH_DEV_URL: url },
     stdio: "inherit",
