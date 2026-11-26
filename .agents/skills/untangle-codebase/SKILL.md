@@ -42,7 +42,7 @@ Read `AGENTS.md` first. It is the source of truth for where code may live. Every
 - **Server state on the client** goes through TanStack Query hooks in features. Never create a `QueryClient` or provider there.
 - **Leave alone:** `apps/web/src/routeTree.gen.ts` (generated), the shared ui-sdk wrappers in `packages/ui/src/components`, `bun.lock` and `bunfig.toml` (the hoisted linker is deliberate), and the desktop updater and signing setup unless that is the area asked about.
 - **Public contracts stay put:** HTTP routes under `apps/web/src/routes/api`, the `@app/features/*` entry points in `packages/features/package.json`, and the SQLite schema and migrations. Changing one is a behavior change, not a refactor. Ask first.
-- **Run server code with Node**, not Bun (`node:sqlite`).
+- **Run server and SQLite code with Bun**, using the built-in `bun:sqlite` driver.
 
 Places to look first:
 

@@ -119,6 +119,28 @@
         "no-restricted-imports": [
           "error",
           {
+            "paths": [
+              {
+                "name": "node:sqlite",
+                "message": "SQLite storage must use Bun's built-in bun:sqlite driver."
+              },
+              {
+                "name": "better-sqlite3",
+                "message": "SQLite storage must use Bun's built-in bun:sqlite driver."
+              },
+              {
+                "name": "sqlite3",
+                "message": "SQLite storage must use Bun's built-in bun:sqlite driver."
+              },
+              {
+                "name": "@libsql/client",
+                "message": "SQLite storage must use Bun's built-in bun:sqlite driver."
+              },
+              {
+                "name": "sql.js",
+                "message": "SQLite storage must use Bun's built-in bun:sqlite driver."
+              }
+            ],
             "patterns": [
               {
                 "group": [

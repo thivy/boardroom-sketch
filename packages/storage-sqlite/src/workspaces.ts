@@ -1,5 +1,5 @@
 import type { Workspace, WorkspaceStore } from "@app/contracts";
-import type { DatabaseSync } from "node:sqlite";
+import type { Database } from "bun:sqlite";
 import { migrate, type Migration } from "./database";
 
 /** Append a step to change the schema; never edit one that has shipped. */
@@ -27,7 +27,7 @@ const toWorkspace = (row: Row): Workspace => ({
 });
 
 /** Keeps workspaces in the shared database. */
-export function workspacesSqlite(db: DatabaseSync): WorkspaceStore {
+export function workspacesSqlite(db: Database): WorkspaceStore {
   migrate(db, migration);
 
   const selectAll = db.prepare("SELECT * FROM workspaces ORDER BY updated_at DESC, id DESC");
