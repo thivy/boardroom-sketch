@@ -7,7 +7,7 @@ import {
   type StoredSession,
   type TranscriptStore,
 } from "@app/contracts";
-import type { DatabaseSync } from "node:sqlite";
+import type { Database } from "bun:sqlite";
 import { migrate } from "./database";
 import { transcriptsMigration } from "./transcripts-schema";
 
@@ -32,7 +32,7 @@ const toSession = (row: SessionRow): StoredSession => ({
 });
 
 /** Keeps transcripts in the shared database (see `openDatabase`). */
-export function transcriptsSqlite(db: DatabaseSync): TranscriptStore {
+export function transcriptsSqlite(db: Database): TranscriptStore {
   migrate(db, transcriptsMigration);
 
   // A crash or a killed server leaves sessions open; end them at their last caption.

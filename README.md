@@ -10,7 +10,7 @@ packages/ui  Styled ui-sdk components, shared layout, the `cn()` helper, and the
 packages/contracts   Types shared by client, server and adapters, including the `CaptionSource` port.
 packages/teams-cdp   Interim `CaptionSource` that reads Teams captions over the Chrome DevTools Protocol.
 packages/copilot-sdk       `getCopilotStatus` and `createCopilotSession` (the chat ports) and `copilotModel`, through the GitHub Copilot SDK.
-packages/storage-sqlite     One SQLite file (`node:sqlite`) shared by the app's stores; today it holds the `TranscriptStore`.
+packages/storage-sqlite     One SQLite file, using Bun's built-in `bun:sqlite`, shared by the app's stores.
 ```
 
 Dependency direction: `web` → `features`, `components`, `teams-cdp`, `storage-sqlite`, `copilot-sdk`; `features` → `components`, `contracts`; the two adapters → `contracts`. The captions and chat features know only the `CaptionSource`, `TranscriptStore` and chat (`GetChatStatus`, `CreateChatSession`) ports; the app wires the adapters in `apps/web/src/caption-handlers.ts` and `chat-handlers.ts` (see [`packages/features/CAPTIONS.md`](packages/features/CAPTIONS.md) and [`packages/teams-cdp`](packages/teams-cdp/README.md)).

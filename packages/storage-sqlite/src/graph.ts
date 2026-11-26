@@ -4,7 +4,7 @@ import {
   type CreateNodeInput,
   type GraphStore,
 } from "@app/contracts";
-import type { DatabaseSync } from "node:sqlite";
+import type { Database } from "bun:sqlite";
 import { migrate } from "./database";
 import { createGraphCommands } from "./graph-commands";
 import { createGraphQueries } from "./graph-queries";
@@ -17,7 +17,7 @@ import { transcriptsMigration } from "./transcripts-schema";
  * Keeps a meeting's graph in the shared database (see `openDatabase`). It composes the queries (how
  * the graph is read) with the commands (how it is changed, always in one transaction and logged).
  */
-export function graphSqlite(db: DatabaseSync): GraphStore {
+export function graphSqlite(db: Database): GraphStore {
   // The graph points at meetings, speakers and captions, so their tables come first.
   migrate(db, transcriptsMigration);
   migrate(db, graphMigration);

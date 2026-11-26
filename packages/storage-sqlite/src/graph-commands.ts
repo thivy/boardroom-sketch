@@ -36,7 +36,7 @@ import {
   type UpdateNodeInput,
 } from "@app/contracts";
 import { randomUUID } from "node:crypto";
-import type { DatabaseSync } from "node:sqlite";
+import type { Database } from "bun:sqlite";
 import {
   type NodeRow,
   type EdgeRow,
@@ -58,7 +58,7 @@ import { inTransaction, type GraphStatements } from "./graph-statements";
  * enough detail to rebuild the graph from the log alone, and with the transcript quotes that justify it.
  */
 export function createGraphCommands(
-  db: DatabaseSync,
+  db: Database,
   statements: GraphStatements,
   queries: GraphQueries,
 ) {

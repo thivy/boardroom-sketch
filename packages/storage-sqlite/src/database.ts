@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { Database } from "bun:sqlite";
 
 export type DatabaseOptions = {
   /** The database file. Defaults to `DATABASE_PATH`, then `TRANSCRIPTS_DB` (the older name), then `./data/transcripts.db`. */
@@ -19,10 +19,10 @@ export type Migration = {
 /** Opens (creating if needed) the one SQLite file the app's stores share. */
 export function openDatabase({
   path = process.env.DATABASE_PATH || process.env.TRANSCRIPTS_DB || "./data/transcripts.db",
-}: DatabaseOptions = {}): DatabaseSync {
+}: DatabaseOptions = {}): Database {
   const file = resolve(path);
   mkdirSync(dirname(file), { recursive: true });
-  const db = new DatabaseSync(file);
+  const db = new Database(file, { create: true });
   db.exec("PRAGMA journal_mode = WAL");
   db.exec("PRAGMA foreign_keys = ON");
   db.exec(`
@@ -34,7 +34,7 @@ export function openDatabase({
 }
 
 /** Brings one module's tables up to date; each step runs once, in a transaction. */
-export function migrate(db: DatabaseSync, { module, steps, adoptUserVersion }: Migration) {
+export function migrate(db: Database, { module, steps, adoptUserVersion }: Migration) {
   const row = db.prepare("SELECT version FROM schema_versions WHERE module = ?").get(module) as
     | { version: number }
     | undefined;

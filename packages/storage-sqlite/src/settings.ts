@@ -1,5 +1,5 @@
 import { DEFAULT_SETTINGS, type AppSettings, type SettingsStore } from "@app/contracts";
-import type { DatabaseSync } from "node:sqlite";
+import type { Database } from "bun:sqlite";
 import { migrate, type Migration } from "./database";
 
 /** Append a step to change the schema; never edit one that has shipped. */
@@ -18,7 +18,7 @@ const migration: Migration = {
 const KEYS = Object.keys(DEFAULT_SETTINGS) as (keyof AppSettings)[];
 
 /** Keeps the app's settings in the shared database, one row per setting. */
-export function settingsSqlite(db: DatabaseSync): SettingsStore {
+export function settingsSqlite(db: Database): SettingsStore {
   migrate(db, migration);
 
   const select = db.prepare("SELECT key, value FROM settings");

@@ -1,7 +1,7 @@
-import type { DatabaseSync } from "node:sqlite";
+import type { Database } from "bun:sqlite";
 
 /** Every statement the graph store runs, prepared once. */
-export function prepareGraphStatements(db: DatabaseSync) {
+export function prepareGraphStatements(db: Database) {
   const selectNode = db.prepare("SELECT * FROM graph_nodes WHERE id = ?");
   const meetingExists = db.prepare("SELECT 1 FROM meetings WHERE id = ?");
   const insertNode = db.prepare(`
@@ -185,7 +185,7 @@ export function prepareGraphStatements(db: DatabaseSync) {
 export type GraphStatements = ReturnType<typeof prepareGraphStatements>;
 
 /** Runs `work` in one transaction. */
-export function inTransaction<T>(db: DatabaseSync, work: () => T): T {
+export function inTransaction<T>(db: Database, work: () => T): T {
   db.exec("BEGIN");
   try {
     const result = work();

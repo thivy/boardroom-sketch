@@ -1,5 +1,5 @@
 import type { PipelineEvent, PipelineEventKind, PipelineLog } from "@app/contracts";
-import type { DatabaseSync } from "node:sqlite";
+import type { Database } from "bun:sqlite";
 import { migrate, type Migration } from "./database";
 import { transcriptsMigration } from "./transcripts-schema";
 
@@ -23,7 +23,7 @@ const migration: Migration = {
 };
 
 /** Keeps the graph pipeline's decisions in the shared database, next to the transcripts they are about. */
-export function pipelineLogSqlite(db: DatabaseSync): PipelineLog {
+export function pipelineLogSqlite(db: Database): PipelineLog {
   // Events point at meetings, so the transcripts tables come first.
   migrate(db, transcriptsMigration);
   migrate(db, migration);
